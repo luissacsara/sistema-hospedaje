@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Hospedaje</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EDEAE2;
+    --ink:#2A2520;
+    --ink-soft:#5B5347;
+    --card-bg:#FBF9F5;
+    --tag-border:#C9C0AE;
+    --libre:#6B8F71;
+    --libre-bg:#E7EEE6;
+    --ocupado:#C08A2E;
+    --ocupado-bg:#F6ECD9;
+    --matrimonial:#A9667A;
+    --simple:#4C6B82;
+    --danger:#B3432F;
+    --shadow: 0 1px 2px rgba(42,37,32,0.06), 0 6px 16px rgba(42,37,32,0.07);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:28px 20px 60px;}
+
+  header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:28px;}
+  .title-block h1{
+    font-family:'Fraunces',serif;
+    font-weight:700;
+    font-size:clamp(28px,4vw,38px);
+    margin:0 0 4px;
+    letter-spacing:-0.01em;
+  }
+  .title-block p{margin:0;color:var(--ink-soft);font-size:14.5px;}
+  .counters{display:flex;gap:10px;margin-top:10px;}
+  .pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    font-weight:600;
+    padding:5px 12px;
+    border-radius:20px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+  .pill.libre{background:var(--libre-bg);color:var(--libre);}
+  .pill.ocupado{background:var(--ocupado-bg);color:var(--ocupado);}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor;}
+
+  .gear-btn{
+    background:var(--card-bg);
+    border:1.5px solid var(--tag-border);
+    width:42px;height:42px;border-radius:12px;
+    display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .gear-btn:hover{border-color:var(--ink-soft);transform:rotate(20deg);}
+  .gear-btn svg{width:20px;height:20px;stroke:var(--ink);}
+
+  .floor{margin-bottom:34px;}
+  .floor-label{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:19px;
+    margin:0 0 14px;
+    display:flex;align-items:center;gap:10px;
+  }
+  .floor-label::after{content:'';flex:1;height:1px;background:var(--tag-border);}
+
+  .room-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+    gap:16px;
+  }
+
+  .room-tag{
+    position:relative;
+    background:var(--card-bg);
+    border:1.5px solid var(--tag-border);
+    border-radius:16px;
+    padding:22px 14px 14px;
+    cursor:pointer;
+    box-shadow:var(--shadow);
+    transition:transform .12s ease, box-shadow .12s ease;
+    text-align:left;
+  }
+  .room-tag:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(42,37,32,0.1), 0 10px 22px rgba(42,37,32,0.1);}
+  .room-tag::before{
+    content:'';
+    position:absolute;top:-9px;left:50%;transform:translateX(-50%);
+    width:16px;height:16px;border-radius:50%;
+    background:var(--bg);
+    border:1.5px solid var(--tag-border);
+  }
+  .room-tag .status-bar{
+    position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 3px 3px 0;
+  }
+  .room-tag.st-libre .status-bar{background:var(--libre);}
+  .room-tag.st-ocupado .status-bar{background:var(--ocupado);}
+
+  .room-top{display:flex;align-items:center;justify-content:space-between;margin-left:6px;}
+  .room-num{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:22px;}
+  .type-icon{width:28px;height:18px;flex-shrink:0;}
+  .type-icon.matrimonial path{fill:var(--matrimonial);}
+  .type-icon.simple path{fill:var(--simple);}
+
+  .room-type-label{
+    margin:2px 0 10px 6px;font-size:11px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.05em;
+  }
+  .room-type-label.matrimonial{color:var(--matrimonial);}
+  .room-type-label.simple{color:var(--simple);}
+
+  .room-status-text{margin-left:6px;font-size:13px;font-weight:600;}
+  .st-libre .room-status-text{color:var(--libre);}
+  .st-ocupado .room-status-text{color:var(--ocupado);}
+
+  .room-sub{margin:3px 0 0 6px;font-size:12.5px;color:var(--ink-soft);line-height:1.4;}
+  .room-price{margin:8px 0 0 6px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--ink);}
+
+  .history-toggle{
+    background:none;border:none;font-family:'Inter';font-weight:600;font-size:14.5px;
+    color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:6px;padding:8px 0;
+  }
+  .history-toggle svg{width:14px;height:14px;transition:transform .15s ease;}
+  .history-toggle.open svg{transform:rotate(180deg);}
+  .history-wrap{overflow:hidden;max-height:0;transition:max-height .25s ease;}
+  .history-wrap.open{max-height:2000px;}
+  table{width:100%;border-collapse:collapse;margin-top:10px;background:var(--card-bg);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
+  th,td{padding:10px 12px;text-align:left;font-size:13px;border-bottom:1px solid var(--tag-border);}
+  th{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);background:rgba(0,0,0,0.02);}
+  tr:last-child td{border-bottom:none;}
+  .empty-hist{padding:20px;text-align:center;color:var(--ink-soft);font-size:13.5px;}
+
+  .report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:14px 0;}
+  .report-card{background:var(--card-bg);border:1.5px solid var(--tag-border);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
+  .report-card .label{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);font-weight:600;margin-bottom:4px;}
+  .report-card .value{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;}
+  .report-card.pos .value{color:var(--libre);}
+  .report-card.neg .value{color:var(--danger);}
+  .row-actions{display:flex;justify-content:flex-end;margin-top:6px;}
+  .icon-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:12.5px;text-decoration:underline;}
+
+  /* Modal */
+  .overlay{
+    position:fixed;inset:0;background:rgba(42,37,32,0.45);
+    display:none;align-items:center;justify-content:center;padding:20px;z-index:50;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background:var(--card-bg);border-radius:18px;max-width:440px;width:100%;
+    padding:24px;box-shadow:0 20px 50px rgba(0,0,0,0.25);max-height:90vh;overflow-y:auto;
+  }
+  .modal h2{font-family:'Fraunces',serif;font-size:22px;margin:0 0 2px;}
+  .modal .sub{color:var(--ink-soft);font-size:13.5px;margin:0 0 18px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;}
+  .field input, .field textarea, .field select{
+    width:100%;padding:10px 12px;border:1.5px solid var(--tag-border);border-radius:10px;
+    font-family:'Inter';font-size:14.5px;background:#fff;color:var(--ink);
+  }
+  .field textarea{resize:vertical;min-height:50px;}
+  .field input:focus, .field textarea:focus{outline:2px solid var(--ink-soft);outline-offset:1px;}
+  .row2{display:flex;gap:10px;}
+  .row2 > .field{flex:1;}
+  .dni-row{display:flex;gap:8px;}
+  .dni-row input{flex:1;}
+  .btn{
+    padding:10px 16px;border-radius:10px;border:none;font-family:'Inter';font-weight:600;
+    font-size:14px;cursor:pointer;transition:opacity .15s ease;
+  }
+  .btn:hover{opacity:0.88;}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-primary{background:var(--ink);color:#fff;width:100%;margin-top:6px;}
+  .btn-secondary{background:transparent;border:1.5px solid var(--tag-border);color:var(--ink);}
+  .btn-danger{background:transparent;color:var(--danger);border:1.5px solid var(--danger);width:100%;margin-top:10px;}
+  .btn-dni{background:var(--ink);color:#fff;white-space:nowrap;font-size:13px;}
+  .modal-close{
+    position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;
+    font-size:18px;color:var(--ink-soft);
+  }
+  .modal-wrap{position:relative;}
+  .summary-box{
+    background:var(--libre-bg);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13.5px;line-height:1.6;
+  }
+  .summary-box b{font-family:'IBM Plex Mono',monospace;}
+  .hint{font-size:12px;color:var(--ink-soft);margin-top:-6px;margin-bottom:12px;}
+  .hint.err{color:var(--danger);}
+  .hint.ok{color:var(--libre);}
+
+  .lock-screen{
+    position:fixed;inset:0;background:var(--bg);z-index:100;
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .lock-box{
+    background:var(--card-bg);border:1.5px solid var(--tag-border);border-radius:18px;
+    padding:32px 28px;max-width:360px;width:100%;box-shadow:var(--shadow);text-align:center;
+  }
+  .lock-box h1{font-family:'Fraunces',serif;font-size:24px;margin:0 0 6px;}
+  .lock-box p{color:var(--ink-soft);font-size:13.5px;margin:0 0 20px;}
+  .lock-box input{
+    width:100%;padding:12px 14px;border:1.5px solid var(--tag-border);border-radius:10px;
+    font-family:'Inter';font-size:15px;text-align:center;letter-spacing:.05em;margin-bottom:12px;
+  }
+  .role-badge{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;
+    padding:4px 10px;border-radius:20px;background:var(--libre-bg);color:var(--libre);
+    margin-right:10px;text-transform:uppercase;letter-spacing:.03em;
+  }
+  .logout-link{
+    background:none;border:none;color:var(--ink-soft);font-size:12.5px;cursor:pointer;
+    text-decoration:underline;padding:0;
+  }
+  .header-role-row{display:flex;align-items:center;margin-top:8px;}
+</style>
+</head>
+<body>
+
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-box">
+    <h1>Sistema de Hospedaje</h1>
+    <p>Ingresa tu contraseña para continuar</p>
+    <input type="password" id="lock-password" placeholder="Contraseña" autocomplete="off">
+    <button class="btn btn-primary" id="lock-entrar">Entrar</button>
+    <p class="hint err" id="lock-hint" style="margin-top:10px;"></p>
+  </div>
+</div>
+
+<div class="wrap" id="main-wrap" style="display:none;">
+
+  <header>
+    <div class="title-block">
+      <h1>Sistema de Hospedaje</h1>
+      <p>Control de check-in / check-out por habitación</p>
+      <div class="counters">
+        <span class="pill libre"><span class="dot"></span><span id="count-libre">0</span> libres</span>
+        <span class="pill ocupado"><span class="dot"></span><span id="count-ocupado">0</span> ocupados</span>
+      </div>
+      <div class="header-role-row">
+        <span class="role-badge" id="role-badge">—</span>
+        <button class="logout-link" id="btn-logout">Cerrar sesión</button>
+      </div>
+    </div>
+    <button class="gear-btn" id="btn-settings" title="Configuración">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </header>
+
+  <div class="floor">
+    <p class="floor-label">Piso 3</p>
+    <div class="room-grid" id="floor-3"></div>
+  </div>
+  <div class="floor">
+    <p class="floor-label">Piso 4</p>
+    <div class="room-grid" id="floor-4"></div>
+  </div>
+
+  <button class="history-toggle" id="history-toggle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Ver historial de estadías
+  </button>
+  <div class="history-wrap" id="history-wrap">
+    <div id="history-content"></div>
+  </div>
+
+  <button class="history-toggle" id="gastos-toggle" data-admin-only>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Gastos
+  </button>
+  <div class="history-wrap" id="gastos-wrap" data-admin-only>
+    <div id="gastos-content">
+      <div class="row2">
+        <div class="field">
+          <label>Fecha</label>
+          <input type="date" id="gs-fecha">
+        </div>
+        <div class="field">
+          <label>Monto (S/)</label>
+          <input type="number" id="gs-monto" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field" style="flex:2;">
+          <label>Descripción</label>
+          <input type="text" id="gs-desc" placeholder="Ej: detergente, gasfitero, luz...">
+        </div>
+        <div class="field">
+          <label>Categoría</label>
+          <select id="gs-cat">
+            <option>Insumos</option>
+            <option>Servicios</option>
+            <option>Mantenimiento</option>
+            <option>Personal</option>
+            <option>Otro</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="gs-agregar" style="margin-bottom:16px;">Agregar gasto</button>
+      <div id="gastos-tabla"></div>
+    </div>
+  </div>
+
+  <button class="history-toggle" id="reporte-toggle" data-admin-only>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Reporte mensual
+  </button>
+  <div class="history-wrap" id="reporte-wrap" data-admin-only>
+    <div id="reporte-content">
+      <div class="field" style="max-width:220px;">
+        <label>Mes</label>
+        <input type="month" id="rp-mes">
+      </div>
+      <div id="reporte-resultado"></div>
+    </div>
+  </div>
+
+  <button class="btn btn-secondary" id="btn-exportar" data-admin-only style="margin-top:18px;">Exportar respaldo (Excel)</button>
+
+</div>
+
+<!-- MODAL CHECK-IN -->
+<div class="overlay" id="overlay-checkin">
+  <div class="modal modal-wrap">
+    <button class="modal-close" data-close>&times;</button>
+    <h2 id="ci-title">Check-in Cuarto 301</h2>
+    <p class="sub" id="ci-sub">Matrimonial · S/ 40 por noche</p>
+
+    <div class="field">
+      <label>DNI del huésped</label>
+      <div class="dni-row">
+        <input type="text" id="ci-dni" maxlength="8" inputmode="numeric" placeholder="8 dígitos">
+        <button class="btn btn-dni" id="ci-buscar-dni">Buscar</button>
+      </div>
+      <p class="hint" id="ci-dni-hint"></p>
+    </div>
+
+    <div class="field">
+      <label>Nombre completo</label>
+      <input type="text" id="ci-nombre" placeholder="Nombre y apellidos">
+    </div>
+
+    <div class="row2">
+      <div class="field">
+        <label>N° de personas</label>
+        <input type="number" id="ci-personas" min="1" value="1">
+      </div>
+      <div class="field">
+        <label>Precio por noche (S/)</label>
+        <input type="number" id="ci-precio" min="0" step="1">
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Entrada</label>
+      <input type="datetime-local" id="ci-entrada">
+    </div>
+
+    <div class="field">
+      <label>Notas (opcional)</label>
+      <textarea id="ci-notas" placeholder="Ej: pago adelantado, mascota, etc."></textarea>
+    </div>
+
+    <button class="btn btn-primary" id="ci-confirmar">Registrar entrada</button>
+  </div>
+</div>
+
+<!-- MODAL CHECK-OUT / OCUPADO -->
+<div class="overlay" id="overlay-checkout">
+  <div class="modal modal-wrap">
+    <button class="modal-close" data-close>&times;</button>
+    <h2 id="co-title">Cuarto 301</h2>
+    <p class="sub" id="co-sub">Matrimonial</p>
+
+    <div class="summary-box" id="co-summary"></div>
+
+    <div class="row2">
+      <div class="field">
+        <label>Precio por noche (S/)</label>
+        <input type="number" id="co-precio" min="0" step="1">
+      </div>
+      <div class="field">
+        <label>Total a cobrar (S/)</label>
+        <input type="number" id="co-total" min="0" step="1">
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Hora de salida</label>
+        <input type="datetime-local" id="co-salida">
+      </div>
+      <div class="field">
+        <label>Tipo de pago</label>
+        <select id="co-pago">
+          <option value="Efectivo">Efectivo</option>
+          <option value="Yape">Yape</option>
+        </select>
+      </div>
+    </div>
+    <p class="hint">Puedes ajustar el total manualmente si hay descuento.</p>
+
+    <button class="btn btn-primary" id="co-confirmar">Confirmar salida (check-out)</button>
+    <button class="btn btn-danger" id="co-cancelar" data-admin-only>Cancelar registro (sin cobro)</button>
+  </div>
+</div>
+
+<!-- MODAL SETTINGS -->
+<div class="overlay" id="overlay-settings">
+  <div class="modal modal-wrap">
+    <button class="modal-close" data-close>&times;</button>
+    <h2>Configuración</h2>
+    <p class="sub">Enlace del Apps Script (autocompletar DNI + respaldo automático en Google Sheets)</p>
+    <div class="field">
+      <label>URL del Apps Script (termina en /exec)</label>
+      <input type="text" id="set-url" placeholder="https://script.google.com/macros/s/.../exec">
+    </div>
+    <p class="hint" id="set-url-hint">Cada check-out y cada gasto se enviarán automáticamente a tu Google Sheet, además de guardarse aquí. Si lo dejas vacío, el sistema sigue funcionando normal, solo sin ese respaldo externo.</p>
+    <button class="btn btn-primary" id="set-guardar">Guardar enlace</button>
+
+    <div style="height:1px;background:var(--tag-border);margin:20px 0;"></div>
+
+    <p class="sub" style="margin-bottom:14px;">Contraseñas de acceso</p>
+    <div class="field">
+      <label>Contraseña de administrador</label>
+      <input type="text" id="set-pass-admin" placeholder="Contraseña admin">
+    </div>
+    <div class="field">
+      <label>Contraseña de empleados</label>
+      <input type="text" id="set-pass-empleado" placeholder="Contraseña empleados">
+    </div>
+    <p class="hint" id="set-pass-hint">Ambas contraseñas dan acceso al sistema; la de administrador además desbloquea esta Configuración y "Cancelar registro sin cobro".</p>
+    <button class="btn btn-primary" id="set-guardar-pass">Guardar contraseñas</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const ROOMS = [
+  {num:301,type:'matrimonial'},{num:302,type:'simple'},{num:303,type:'simple'},
+  {num:304,type:'matrimonial'},{num:305,type:'matrimonial'},{num:306,type:'simple'},
+  {num:401,type:'matrimonial'},{num:402,type:'simple'},{num:403,type:'simple'},
+  {num:404,type:'matrimonial'},{num:405,type:'matrimonial'},{num:406,type:'simple'}
+];
+const DEFAULT_PRICE = {matrimonial:40, simple:30};
+
+const ICON_MATRIMONIAL = `<svg class="type-icon matrimonial" viewBox="0 0 32 20"><path d="M2 18v-7a3 3 0 013-3h22a3 3 0 013 3v7h-2v-3H4v3H2zm4-9a2 2 0 114 0 2 2 0 01-4 0zm3 2h14a2 2 0 012 2v1H7v-1a2 2 0 012-2z"/></svg>`;
+const ICON_SIMPLE = `<svg class="type-icon simple" viewBox="0 0 32 20"><path d="M4 18v-6a3 3 0 013-3h10a3 3 0 013 3v6H4zm18-6a3 3 0 013-3 3 3 0 013 3v6h-6v-6zM7 8a2 2 0 114 0 2 2 0 01-4 0z"/></svg>`;
+
+let state = {};
+let history_ = [];
+let expenses_ = [];
+let currentRoom = null;
+let currentRole = null;
+const DEFAULT_ADMIN_PASS = 'admin2026';
+const DEFAULT_EMPLEADO_PASS = 'hospedaje2026';
+
+async function loadState() {
+  try {
+    const r = await window.storage.get('rooms-state', true);
+    state = r ? JSON.parse(r.value) : {};
+  } catch { state = {}; }
+  ROOMS.forEach(rm => {
+    if (!state[rm.num]) state[rm.num] = { status: 'libre' };
+  });
+  try {
+    const h = await window.storage.get('history-log', true);
+    history_ = h ? JSON.parse(h.value) : [];
+  } catch { history_ = []; }
+  try {
+    const g = await window.storage.get('expenses-log', true);
+    expenses_ = g ? JSON.parse(g.value) : [];
+  } catch { expenses_ = []; }
+}
+
+async function saveExpenses() {
+  await window.storage.set('expenses-log', JSON.stringify(expenses_), true);
+}
+
+async function saveState() {
+  await window.storage.set('rooms-state', JSON.stringify(state), true);
+}
+async function saveHistory() {
+  await window.storage.set('history-log', JSON.stringify(history_), true);
+}
+
+function money(n){ return 'S/ ' + Number(n).toFixed(2); }
+
+function render() {
+  const f3 = document.getElementById('floor-3');
+  const f4 = document.getElementById('floor-4');
+  f3.innerHTML = ''; f4.innerHTML = '';
+  let libres = 0, ocupados = 0;
+
+  ROOMS.forEach(rm => {
+    const s = state[rm.num];
+    const target = rm.num < 400 ? f3 : f4;
+    const card = document.createElement('div');
+    card.className = `room-tag st-${s.status}`;
+    card.dataset.room = rm.num;
+
+    const icon = rm.type === 'matrimonial' ? ICON_MATRIMONIAL : ICON_SIMPLE;
+    let sub = '';
+    if (s.status === 'ocupado') {
+      ocupados++;
+      sub = `<p class="room-status-text">Ocupado</p><p class="room-sub">${s.guest.nombre}</p><p class="room-price">${money(s.guest.precio)} / noche</p>`;
+    } else {
+      libres++;
+      sub = `<p class="room-status-text">Disponible</p><p class="room-price">${money(DEFAULT_PRICE[rm.type])} / noche</p>`;
+    }
+
+    card.innerHTML = `
+      <div class="status-bar"></div>
+      <div class="room-top">
+        <span class="room-num">${rm.num}</span>
+        ${icon}
+      </div>
+      <p class="room-type-label ${rm.type}">${rm.type}</p>
+      ${sub}
+    `;
+    card.addEventListener('click', () => openRoom(rm));
+    target.appendChild(card);
+  });
+
+  document.getElementById('count-libre').textContent = libres;
+  document.getElementById('count-ocupado').textContent = ocupados;
+  renderHistory();
+  renderGastos();
+  renderReporte();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  if (!history_.length) {
+    el.innerHTML = '<p class="empty-hist">Todavía no hay estadías finalizadas.</p>';
+    return;
+  }
+  const rows = [...history_].reverse().map(h => `
+    <tr>
+      <td>${h.habitacion}</td>
+      <td>${h.huesped}</td>
+      <td>${new Date(h.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
+      <td>${new Date(h.checkout).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
+      <td>${h.noches}</td>
+      <td>${h.pago || '—'}</td>
+      <td>${money(h.total)}</td>
+    </tr>
+  `).join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Cuarto</th><th>Huésped</th><th>Entrada</th><th>Salida</th><th>Noches</th><th>Pago</th><th>Total</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function renderGastos() {
+  const el = document.getElementById('gastos-tabla');
+  if (!el) return;
+  if (!expenses_.length) {
+    el.innerHTML = '<p class="empty-hist">Todavía no hay gastos registrados.</p>';
+    return;
+  }
+  const rows = [...expenses_].map((g, idx) => `
+    <tr>
+      <td>${new Date(g.fecha + 'T00:00:00').toLocaleDateString('es-PE',{dateStyle:'short'})}</td>
+      <td>${g.descripcion}</td>
+      <td>${g.categoria}</td>
+      <td>${money(g.monto)}</td>
+      <td><button class="icon-btn" data-idx="${idx}" onclick="eliminarGasto(${idx})">Eliminar</button></td>
+    </tr>
+  `).reverse().join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function eliminarGasto(idx) {
+  if (!confirm('¿Eliminar este gasto?')) return;
+  expenses_.splice(idx, 1);
+  await saveExpenses();
+  renderGastos();
+  renderReporte();
+}
+
+function monthKey(dateIso) {
+  const d = new Date(dateIso);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+
+function renderReporte() {
+  const input = document.getElementById('rp-mes');
+  if (!input) return;
+  if (!input.value) {
+    const now = new Date();
+    input.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  const mes = input.value;
+
+  const ingresosMes = history_.filter(h => monthKey(h.checkout) === mes);
+  const gastosMes = expenses_.filter(g => (g.fecha || '').slice(0,7) === mes);
+
+  const totalIngresos = ingresosMes.reduce((s,h) => s + Number(h.total), 0);
+  const totalYape = ingresosMes.filter(h => h.pago === 'Yape').reduce((s,h) => s + Number(h.total), 0);
+  const totalEfectivo = ingresosMes.filter(h => h.pago === 'Efectivo').reduce((s,h) => s + Number(h.total), 0);
+  const totalGastos = gastosMes.reduce((s,g) => s + Number(g.monto), 0);
+  const neto = totalIngresos - totalGastos;
+
+  const resultado = document.getElementById('reporte-resultado');
+  resultado.innerHTML = `
+    <div class="report-grid">
+      <div class="report-card pos"><div class="label">Ingresos</div><div class="value">${money(totalIngresos)}</div></div>
+      <div class="report-card"><div class="label">Efectivo</div><div class="value">${money(totalEfectivo)}</div></div>
+      <div class="report-card"><div class="label">Yape</div><div class="value">${money(totalYape)}</div></div>
+      <div class="report-card neg"><div class="label">Gastos</div><div class="value">${money(totalGastos)}</div></div>
+      <div class="report-card ${neto >= 0 ? 'pos' : 'neg'}"><div class="label">Neto</div><div class="value">${money(neto)}</div></div>
+    </div>
+    <p class="hint">${ingresosMes.length} estadía(s) finalizada(s) y ${gastosMes.length} gasto(s) en este mes.</p>
+  `;
+}
+
+function openRoom(rm) {
+  currentRoom = rm;
+  const s = state[rm.num];
+  if (s.status === 'libre') {
+    document.getElementById('ci-title').textContent = `Check-in Cuarto ${rm.num}`;
+    document.getElementById('ci-sub').textContent = `${rm.type[0].toUpperCase()+rm.type.slice(1)} · ${money(DEFAULT_PRICE[rm.type])} por noche`;
+    document.getElementById('ci-dni').value = '';
+    document.getElementById('ci-dni-hint').textContent = '';
+    document.getElementById('ci-nombre').value = '';
+    document.getElementById('ci-personas').value = 1;
+    document.getElementById('ci-precio').value = DEFAULT_PRICE[rm.type];
+    document.getElementById('ci-notas').value = '';
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('ci-entrada').value = now.toISOString().slice(0,16);
+    document.getElementById('overlay-checkin').classList.add('show');
+  } else {
+    const g = s.guest;
+    document.getElementById('co-title').textContent = `Cuarto ${rm.num}`;
+    document.getElementById('co-sub').textContent = `${rm.type[0].toUpperCase()+rm.type.slice(1)}`;
+    const nights = calcNights(g.checkin);
+    document.getElementById('co-summary').innerHTML = `
+      <b>${g.nombre}</b>${g.dni ? ' · DNI ' + g.dni : ''}<br>
+      ${g.personas} persona(s)<br>
+      Entrada: <b>${new Date(g.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</b><br>
+      Noches transcurridas: <b>${nights}</b>
+      ${g.notas ? '<br>Notas: ' + g.notas : ''}
+    `;
+    document.getElementById('co-precio').value = g.precio;
+    document.getElementById('co-total').value = (nights * g.precio).toFixed(2);
+    const now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    document.getElementById('co-salida').value = now.toISOString().slice(0,16);
+    document.getElementById('co-pago').value = 'Efectivo';
+    document.getElementById('overlay-checkout').classList.add('show');
+  }
+}
+
+function calcNights(checkinIso, checkoutDate) {
+  const inD = new Date(checkinIso);
+  const outD = checkoutDate ? new Date(checkoutDate) : new Date();
+  const diffMs = outD - inD;
+  const nights = Math.max(1, Math.ceil(diffMs / (1000*60*60*24)));
+  return nights;
+}
+
+function closeModals() {
+  document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
+}
+document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModals));
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) closeModals(); }));
+
+function recomputeCheckoutTotal() {
+  const g = state[currentRoom.num].guest;
+  const salida = document.getElementById('co-salida').value;
+  const nights = calcNights(g.checkin, salida ? new Date(salida) : null);
+  const precio = parseFloat(document.getElementById('co-precio').value) || 0;
+  document.getElementById('co-total').value = (nights * precio).toFixed(2);
+}
+document.getElementById('co-precio').addEventListener('input', recomputeCheckoutTotal);
+document.getElementById('co-salida').addEventListener('input', recomputeCheckoutTotal);
+
+document.getElementById('ci-confirmar').addEventListener('click', async () => {
+  const nombre = document.getElementById('ci-nombre').value.trim();
+  if (!nombre) { alert('Ingresa el nombre del huésped.'); return; }
+  const entradaVal = document.getElementById('ci-entrada').value;
+  state[currentRoom.num] = {
+    status: 'ocupado',
+    guest: {
+      nombre,
+      dni: document.getElementById('ci-dni').value.trim(),
+      personas: parseInt(document.getElementById('ci-personas').value) || 1,
+      precio: parseFloat(document.getElementById('ci-precio').value) || DEFAULT_PRICE[currentRoom.type],
+      checkin: new Date(entradaVal).toISOString(),
+      notas: document.getElementById('ci-notas').value.trim()
+    }
+  };
+  await saveState();
+  closeModals();
+  render();
+});
+
+document.getElementById('co-confirmar').addEventListener('click', async () => {
+  const g = state[currentRoom.num].guest;
+  const salidaVal = document.getElementById('co-salida').value;
+  const checkoutIso = salidaVal ? new Date(salidaVal).toISOString() : new Date().toISOString();
+  const nights = calcNights(g.checkin, checkoutIso);
+  const total = parseFloat(document.getElementById('co-total').value) || 0;
+  const pago = document.getElementById('co-pago').value;
+  history_.push({
+    habitacion: currentRoom.num,
+    tipo: currentRoom.type,
+    huesped: g.nombre,
+    dni: g.dni,
+    checkin: g.checkin,
+    checkout: checkoutIso,
+    noches: nights,
+    precioNoche: parseFloat(document.getElementById('co-precio').value) || g.precio,
+    pago,
+    total
+  });
+  state[currentRoom.num] = { status: 'libre' };
+  await saveState();
+  await saveHistory();
+  closeModals();
+  render();
+});
+
+document.getElementById('co-cancelar').addEventListener('click', async () => {
+  if (!confirm('¿Liberar este cuarto sin registrar cobro? Se usa solo si fue un error.')) return;
+  state[currentRoom.num] = { status: 'libre' };
+  await saveState();
+  closeModals();
+  render();
+});
+
+document.getElementById('history-toggle').addEventListener('click', () => {
+  document.getElementById('history-toggle').classList.toggle('open');
+  document.getElementById('history-wrap').classList.toggle('open');
+});
+
+document.getElementById('gastos-toggle').addEventListener('click', () => {
+  document.getElementById('gastos-toggle').classList.toggle('open');
+  document.getElementById('gastos-wrap').classList.toggle('open');
+});
+
+document.getElementById('reporte-toggle').addEventListener('click', () => {
+  document.getElementById('reporte-toggle').classList.toggle('open');
+  document.getElementById('reporte-wrap').classList.toggle('open');
+  renderReporte();
+});
+
+document.getElementById('rp-mes').addEventListener('change', renderReporte);
+
+document.getElementById('gs-agregar').addEventListener('click', async () => {
+  const fecha = document.getElementById('gs-fecha').value;
+  const desc = document.getElementById('gs-desc').value.trim();
+  const cat = document.getElementById('gs-cat').value;
+  const monto = parseFloat(document.getElementById('gs-monto').value);
+  if (!fecha || !desc || !monto) { alert('Completa fecha, descripción y monto.'); return; }
+  expenses_.push({ fecha, descripcion: desc, categoria: cat, monto });
+  await saveExpenses();
+  document.getElementById('gs-fecha').value = '';
+  document.getElementById('gs-desc').value = '';
+  document.getElementById('gs-monto').value = '';
+  renderGastos();
+  renderReporte();
+});
+
+document.getElementById('btn-exportar').addEventListener('click', () => {
+  if (typeof XLSX === 'undefined') { alert('No se pudo cargar la librería de Excel. Revisa tu conexión.'); return; }
+  const huespedesData = history_.map(h => ({
+    Cuarto: h.habitacion,
+    Tipo: h.tipo || '',
+    Huesped: h.huesped,
+    DNI: h.dni || '',
+    Entrada: new Date(h.checkin).toLocaleString('es-PE'),
+    Salida: new Date(h.checkout).toLocaleString('es-PE'),
+    Noches: h.noches,
+    PrecioNoche: h.precioNoche || '',
+    TipoPago: h.pago || '',
+    Total: h.total
+  }));
+  const gastosData = expenses_.map(g => ({
+    Fecha: g.fecha,
+    Descripcion: g.descripcion,
+    Categoria: g.categoria,
+    Monto: g.monto
+  }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(huespedesData), 'Huespedes');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gastosData), 'Gastos');
+  const fechaArchivo = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `respaldo-hospedaje-${fechaArchivo}.xlsx`);
+});
+
+// --- Configuración / DNI lookup ---
+document.getElementById('btn-settings').addEventListener('click', async () => {
+  let url = '';
+  try {
+    const r = await window.storage.get('config:dni-api-url', true);
+    url = r ? r.value : '';
+  } catch { url = ''; }
+  document.getElementById('set-url').value = url;
+  document.getElementById('set-url-hint').className = 'hint';
+  document.getElementById('set-url-hint').textContent = 'Se guarda para todos los que usen este mismo sistema. Si lo dejas vacío, el buscador de DNI simplemente no hará nada y podrás escribir el nombre a mano.';
+
+  const passAdmin = await getPassword('config:pass-admin', DEFAULT_ADMIN_PASS);
+  const passEmpleado = await getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS);
+  document.getElementById('set-pass-admin').value = passAdmin;
+  document.getElementById('set-pass-empleado').value = passEmpleado;
+  document.getElementById('set-pass-hint').className = 'hint';
+
+  document.getElementById('overlay-settings').classList.add('show');
+});
+
+async function getPassword(key, fallback) {
+  try {
+    const r = await window.storage.get(key, true);
+    return (r && r.value) ? r.value : fallback;
+  } catch { return fallback; }
+}
+
+function applyRoleUI() {
+  const isAdmin = currentRole === 'admin';
+  document.getElementById('btn-settings').style.display = isAdmin ? 'flex' : 'none';
+  document.querySelectorAll('[data-admin-only]').forEach(el => el.style.display = isAdmin ? '' : 'none');
+  const badge = document.getElementById('role-badge');
+  badge.textContent = isAdmin ? 'Administrador' : 'Empleado';
+}
+
+document.getElementById('btn-logout').addEventListener('click', () => {
+  sessionStorage.removeItem('hospedaje-role');
+  currentRole = null;
+  document.getElementById('main-wrap').style.display = 'none';
+  document.getElementById('lock-screen').style.display = 'flex';
+  document.getElementById('lock-password').value = '';
+  document.getElementById('lock-hint').textContent = '';
+});
+
+async function attemptLogin(pw) {
+  const hint = document.getElementById('lock-hint');
+  const passAdmin = await getPassword('config:pass-admin', DEFAULT_ADMIN_PASS);
+  const passEmpleado = await getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS);
+  if (pw === passAdmin) {
+    currentRole = 'admin';
+  } else if (pw === passEmpleado) {
+    currentRole = 'empleado';
+  } else {
+    hint.textContent = 'Contraseña incorrecta.';
+    return false;
+  }
+  sessionStorage.setItem('hospedaje-role', currentRole);
+  return true;
+}
+
+document.getElementById('lock-entrar').addEventListener('click', async () => {
+  const pw = document.getElementById('lock-password').value.trim();
+  const ok = await attemptLogin(pw);
+  if (ok) await enterApp();
+});
+document.getElementById('lock-password').addEventListener('keydown', async (e) => {
+  if (e.key === 'Enter') {
+    const pw = document.getElementById('lock-password').value.trim();
+    const ok = await attemptLogin(pw);
+    if (ok) await enterApp();
+  }
+});
+
+async function enterApp() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('main-wrap').style.display = 'block';
+  applyRoleUI();
+  await loadState();
+  render();
+}
+
+document.getElementById('set-guardar').addEventListener('click', async () => {
+  const url = document.getElementById('set-url').value.trim();
+  const hint = document.getElementById('set-url-hint');
+  if (url && !url.includes('script.google.com')) {
+    hint.textContent = 'Esa URL no parece ser de script.google.com. Revísala.';
+    hint.className = 'hint err';
+    return;
+  }
+  if (url && !url.endsWith('/exec')) {
+    hint.textContent = 'La URL debe terminar en /exec (la de la implementación, no la del editor).';
+    hint.className = 'hint err';
+    return;
+  }
+  try {
+    const res = await window.storage.set('config:dni-api-url', url, true);
+    if (!res) throw new Error('sin respuesta');
+    hint.textContent = 'Guardado ✓';
+    hint.className = 'hint ok';
+  } catch (err) {
+    hint.textContent = 'No se pudo guardar. Intenta de nuevo.';
+    hint.className = 'hint err';
+  }
+});
+
+document.getElementById('set-guardar-pass').addEventListener('click', async () => {
+  const admin = document.getElementById('set-pass-admin').value.trim();
+  const empleado = document.getElementById('set-pass-empleado').value.trim();
+  const hint = document.getElementById('set-pass-hint');
+  if (!admin || !empleado) {
+    hint.textContent = 'Completa ambas contraseñas.';
+    hint.className = 'hint err';
+    return;
+  }
+  try {
+    await window.storage.set('config:pass-admin', admin, true);
+    await window.storage.set('config:pass-empleado', empleado, true);
+    hint.textContent = 'Contraseñas guardadas ✓';
+    hint.className = 'hint ok';
+  } catch (err) {
+    hint.textContent = 'No se pudo guardar. Intenta de nuevo.';
+    hint.className = 'hint err';
+  }
+});
+
+document.getElementById('ci-buscar-dni').addEventListener('click', async () => {
+  const dni = document.getElementById('ci-dni').value.trim();
+  const hint = document.getElementById('ci-dni-hint');
+  hint.className = 'hint';
+  if (!/^\d{8}$/.test(dni)) {
+    hint.textContent = 'El DNI debe tener 8 dígitos.';
+    hint.className = 'hint err';
+    return;
+  }
+  let apiUrl = '';
+  try {
+    const r = await window.storage.get('config:dni-api-url', true);
+    apiUrl = r ? r.value : '';
+  } catch { apiUrl = ''; }
+  if (!apiUrl) {
+    hint.textContent = 'No has configurado el enlace de búsqueda (⚙️ Configuración). Escribe el nombre a mano.';
+    return;
+  }
+  hint.textContent = 'Buscando...';
+  try {
+    const res = await fetch(apiUrl + '?dni=' + dni);
+    const data = await res.json();
+    if (data.success) {
+      const nombreCompleto = [data.data.nombres, data.data.apellido_paterno, data.data.apellido_materno]
+        .filter(Boolean).join(' ') || data.data.nombre_completo;
+      document.getElementById('ci-nombre').value = nombreCompleto;
+      hint.textContent = 'Encontrado ✓';
+      hint.className = 'hint ok';
+    } else {
+      hint.textContent = data.message || 'No se encontró el DNI. Escribe el nombre a mano.';
+      hint.className = 'hint err';
+    }
+  } catch (err) {
+    hint.textContent = 'No se pudo conectar al buscador. Escribe el nombre a mano.';
+    hint.className = 'hint err';
+  }
+});
+
+(async function init() {
+  const savedRole = sessionStorage.getItem('hospedaje-role');
+  if (savedRole === 'admin' || savedRole === 'empleado') {
+    currentRole = savedRole;
+    await enterApp();
+  }
+})();
+</script>
+</body>
+</html>
