@@ -419,17 +419,7 @@
   <div class="modal modal-wrap">
     <button class="modal-close" data-close>&times;</button>
     <h2>Configuración</h2>
-    <p class="sub">Enlace del Apps Script (autocompletar DNI + respaldo automático en Google Sheets)</p>
-    <div class="field">
-      <label>URL del Apps Script (termina en /exec)</label>
-      <input type="text" id="set-url" placeholder="https://script.google.com/macros/s/.../exec">
-    </div>
-    <p class="hint" id="set-url-hint">Cada check-out y cada gasto se enviarán automáticamente a tu Google Sheet, además de guardarse aquí. Si lo dejas vacío, el sistema sigue funcionando normal, solo sin ese respaldo externo.</p>
-    <button class="btn btn-primary" id="set-guardar">Guardar enlace</button>
-
-    <div style="height:1px;background:var(--tag-border);margin:20px 0;"></div>
-
-    <p class="sub" style="margin-bottom:14px;">Contraseñas de acceso</p>
+    <p class="sub">Contraseñas de acceso</p>
     <div class="field">
       <label>Contraseña de administrador</label>
       <input type="text" id="set-pass-admin" placeholder="Contraseña admin">
@@ -464,33 +454,55 @@ let currentRole = null;
 const DEFAULT_ADMIN_PASS = 'admin2026';
 const DEFAULT_EMPLEADO_PASS = 'hospedaje2026';
 
-async function loadState() {
+// URL de tu Apps Script (unico backend: DNI + almacenamiento de datos)
+const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxu8o_1735BRjpMuEz4Cg4Nw9sJgzbyHxd2D04PAhEjZBECcSQ46zibtHEQxEQqIB7F/exec';
+
+// --- Reemplazo de window.storage: guarda/lee "llave-valor" en tu Google Sheet ---
+async function kvGet(key) {
   try {
-    const r = await window.storage.get('rooms-state', true);
-    state = r ? JSON.parse(r.value) : {};
-  } catch { state = {}; }
+    const res = await fetch(BACKEND_URL + '?action=get&key=' + encodeURIComponent(key));
+    const data = await res.json();
+    return (data && data.success && data.value != null && data.value !== '') ? data.value : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function kvSet(key, value) {
+  try {
+    const res = await fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'set', key: key, value: value })
+    });
+    const data = await res.json();
+    return !!(data && data.success);
+  } catch (err) {
+    return false;
+  }
+}
+
+async function loadState() {
+  const r = await kvGet('rooms-state');
+  try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
     if (!state[rm.num]) state[rm.num] = { status: 'libre' };
   });
-  try {
-    const h = await window.storage.get('history-log', true);
-    history_ = h ? JSON.parse(h.value) : [];
-  } catch { history_ = []; }
-  try {
-    const g = await window.storage.get('expenses-log', true);
-    expenses_ = g ? JSON.parse(g.value) : [];
-  } catch { expenses_ = []; }
+  const h = await kvGet('history-log');
+  try { history_ = h ? JSON.parse(h) : []; } catch { history_ = []; }
+  const g = await kvGet('expenses-log');
+  try { expenses_ = g ? JSON.parse(g) : []; } catch { expenses_ = []; }
 }
 
 async function saveExpenses() {
-  await window.storage.set('expenses-log', JSON.stringify(expenses_), true);
+  await kvSet('expenses-log', JSON.stringify(expenses_));
 }
 
 async function saveState() {
-  await window.storage.set('rooms-state', JSON.stringify(state), true);
+  await kvSet('rooms-state', JSON.stringify(state));
 }
 async function saveHistory() {
-  await window.storage.set('history-log', JSON.stringify(history_), true);
+  await kvSet('history-log', JSON.stringify(history_));
 }
 
 function money(n){ return 'S/ ' + Number(n).toFixed(2); }
@@ -809,15 +821,6 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
 
 // --- Configuración / DNI lookup ---
 document.getElementById('btn-settings').addEventListener('click', async () => {
-  let url = '';
-  try {
-    const r = await window.storage.get('config:dni-api-url', true);
-    url = r ? r.value : '';
-  } catch { url = ''; }
-  document.getElementById('set-url').value = url;
-  document.getElementById('set-url-hint').className = 'hint';
-  document.getElementById('set-url-hint').textContent = 'Se guarda para todos los que usen este mismo sistema. Si lo dejas vacío, el buscador de DNI simplemente no hará nada y podrás escribir el nombre a mano.';
-
   const passAdmin = await getPassword('config:pass-admin', DEFAULT_ADMIN_PASS);
   const passEmpleado = await getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS);
   document.getElementById('set-pass-admin').value = passAdmin;
@@ -828,10 +831,8 @@ document.getElementById('btn-settings').addEventListener('click', async () => {
 });
 
 async function getPassword(key, fallback) {
-  try {
-    const r = await window.storage.get(key, true);
-    return (r && r.value) ? r.value : fallback;
-  } catch { return fallback; }
+  const v = await kvGet(key);
+  return v || fallback;
 }
 
 function applyRoleUI() {
@@ -888,30 +889,6 @@ async function enterApp() {
   render();
 }
 
-document.getElementById('set-guardar').addEventListener('click', async () => {
-  const url = document.getElementById('set-url').value.trim();
-  const hint = document.getElementById('set-url-hint');
-  if (url && !url.includes('script.google.com')) {
-    hint.textContent = 'Esa URL no parece ser de script.google.com. Revísala.';
-    hint.className = 'hint err';
-    return;
-  }
-  if (url && !url.endsWith('/exec')) {
-    hint.textContent = 'La URL debe terminar en /exec (la de la implementación, no la del editor).';
-    hint.className = 'hint err';
-    return;
-  }
-  try {
-    const res = await window.storage.set('config:dni-api-url', url, true);
-    if (!res) throw new Error('sin respuesta');
-    hint.textContent = 'Guardado ✓';
-    hint.className = 'hint ok';
-  } catch (err) {
-    hint.textContent = 'No se pudo guardar. Intenta de nuevo.';
-    hint.className = 'hint err';
-  }
-});
-
 document.getElementById('set-guardar-pass').addEventListener('click', async () => {
   const admin = document.getElementById('set-pass-admin').value.trim();
   const empleado = document.getElementById('set-pass-empleado').value.trim();
@@ -921,12 +898,12 @@ document.getElementById('set-guardar-pass').addEventListener('click', async () =
     hint.className = 'hint err';
     return;
   }
-  try {
-    await window.storage.set('config:pass-admin', admin, true);
-    await window.storage.set('config:pass-empleado', empleado, true);
+  const okA = await kvSet('config:pass-admin', admin);
+  const okE = await kvSet('config:pass-empleado', empleado);
+  if (okA && okE) {
     hint.textContent = 'Contraseñas guardadas ✓';
     hint.className = 'hint ok';
-  } catch (err) {
+  } else {
     hint.textContent = 'No se pudo guardar. Intenta de nuevo.';
     hint.className = 'hint err';
   }
@@ -941,18 +918,9 @@ document.getElementById('ci-buscar-dni').addEventListener('click', async () => {
     hint.className = 'hint err';
     return;
   }
-  let apiUrl = '';
-  try {
-    const r = await window.storage.get('config:dni-api-url', true);
-    apiUrl = r ? r.value : '';
-  } catch { apiUrl = ''; }
-  if (!apiUrl) {
-    hint.textContent = 'No has configurado el enlace de búsqueda (⚙️ Configuración). Escribe el nombre a mano.';
-    return;
-  }
   hint.textContent = 'Buscando...';
   try {
-    const res = await fetch(apiUrl + '?dni=' + dni);
+    const res = await fetch(BACKEND_URL + '?action=dni&dni=' + dni);
     const data = await res.json();
     if (data.success) {
       const nombreCompleto = [data.data.nombres, data.data.apellido_paterno, data.data.apellido_materno]
