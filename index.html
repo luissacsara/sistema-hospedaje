@@ -107,10 +107,13 @@
     border:1.5px solid var(--tag-border);
   }
   .room-tag .status-bar{
-    position:absolute;left:0;top:14px;bottom:14px;width:5px;border-radius:0 3px 3px 0;
+    position:absolute;left:0;top:14px;bottom:14px;width:6px;border-radius:0 3px 3px 0;
   }
+  .room-tag.st-libre{background:var(--libre-bg);border-color:var(--libre);border-width:2px;}
   .room-tag.st-libre .status-bar{background:var(--libre);}
+  .room-tag.st-ocupado{background:var(--ocupado-bg);border-color:var(--ocupado);border-width:2px;}
   .room-tag.st-ocupado .status-bar{background:var(--ocupado);}
+  .room-tag.st-limpieza{background:var(--limpieza-bg);border-color:var(--limpieza);border-width:2px;}
   .room-tag.st-limpieza .status-bar{background:var(--limpieza);}
 
   .room-top{display:flex;align-items:center;justify-content:space-between;margin-left:6px;}
@@ -511,14 +514,16 @@ async function kvSet(key, value) {
 }
 
 async function loadState() {
-  const r = await kvGet('rooms-state');
+  const [r, h, g] = await Promise.all([
+    kvGet('rooms-state'),
+    kvGet('history-log'),
+    kvGet('expenses-log')
+  ]);
   try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
     if (!state[rm.num]) state[rm.num] = { status: 'libre' };
   });
-  const h = await kvGet('history-log');
   try { history_ = h ? JSON.parse(h) : []; } catch { history_ = []; }
-  const g = await kvGet('expenses-log');
   try { expenses_ = g ? JSON.parse(g) : []; } catch { expenses_ = []; }
 }
 
@@ -774,7 +779,11 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
       montoPagado: yaPago ? (parseFloat(document.getElementById('ci-monto-pagado').value) || 0) : 0
     }
   };
+  const btn = document.getElementById('ci-confirmar');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
   await saveState();
+  btn.disabled = false; btn.textContent = original;
   closeModals();
   render();
 });
@@ -799,8 +808,11 @@ document.getElementById('co-confirmar').addEventListener('click', async () => {
     total
   });
   state[currentRoom.num] = { status: 'limpieza' };
-  await saveState();
-  await saveHistory();
+  const btn = document.getElementById('co-confirmar');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  await Promise.all([saveState(), saveHistory()]);
+  btn.disabled = false; btn.textContent = original;
   closeModals();
   render();
 });
@@ -838,7 +850,11 @@ document.getElementById('gs-agregar').addEventListener('click', async () => {
   const monto = parseFloat(document.getElementById('gs-monto').value);
   if (!fecha || !desc || !monto) { alert('Completa fecha, descripción y monto.'); return; }
   expenses_.push({ fecha, descripcion: desc, categoria: cat, monto });
+  const btn = document.getElementById('gs-agregar');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
   await saveExpenses();
+  btn.disabled = false; btn.textContent = original;
   document.getElementById('gs-fecha').value = '';
   document.getElementById('gs-desc').value = '';
   document.getElementById('gs-monto').value = '';
@@ -875,8 +891,10 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
 
 // --- Configuración / DNI lookup ---
 document.getElementById('btn-settings').addEventListener('click', async () => {
-  const passAdmin = await getPassword('config:pass-admin', DEFAULT_ADMIN_PASS);
-  const passEmpleado = await getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS);
+  const [passAdmin, passEmpleado] = await Promise.all([
+    getPassword('config:pass-admin', DEFAULT_ADMIN_PASS),
+    getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS)
+  ]);
   document.getElementById('set-pass-admin').value = passAdmin;
   document.getElementById('set-pass-empleado').value = passEmpleado;
   document.getElementById('set-pass-hint').className = 'hint';
@@ -927,16 +945,30 @@ async function attemptLogin(pw) {
 }
 
 document.getElementById('lock-entrar').addEventListener('click', async () => {
+  const btn = document.getElementById('lock-entrar');
   const pw = document.getElementById('lock-password').value.trim();
+  btn.disabled = true; btn.textContent = 'Entrando...';
   const ok = await attemptLogin(pw);
-  if (ok) await enterApp();
+  if (ok) {
+    document.getElementById('lock-hint').textContent = 'Cargando datos...';
+    document.getElementById('lock-hint').className = 'hint';
+    await enterApp();
+  }
+  btn.disabled = false; btn.textContent = 'Entrar';
 });
 document.getElementById('lock-password').addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
+    const btn = document.getElementById('lock-entrar');
     const pw = document.getElementById('lock-password').value.trim();
+    btn.disabled = true; btn.textContent = 'Entrando...';
     const ok = await attemptLogin(pw);
-    if (ok) await enterApp();
+    if (ok) {
+      document.getElementById('lock-hint').textContent = 'Cargando datos...';
+      document.getElementById('lock-hint').className = 'hint';
+      await enterApp();
+    }
+    btn.disabled = false; btn.textContent = 'Entrar';
   }
 });
 
