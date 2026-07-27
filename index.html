@@ -17,6 +17,8 @@
     --libre-bg:#E7EEE6;
     --ocupado:#C08A2E;
     --ocupado-bg:#F6ECD9;
+    --limpieza:#9B5DE5;
+    --limpieza-bg:#EFE5FA;
     --matrimonial:#A9667A;
     --simple:#4C6B82;
     --danger:#B3432F;
@@ -55,6 +57,7 @@
   }
   .pill.libre{background:var(--libre-bg);color:var(--libre);}
   .pill.ocupado{background:var(--ocupado-bg);color:var(--ocupado);}
+  .pill.limpieza{background:var(--limpieza-bg);color:var(--limpieza);}
   .dot{width:8px;height:8px;border-radius:50%;background:currentColor;}
 
   .gear-btn{
@@ -108,6 +111,7 @@
   }
   .room-tag.st-libre .status-bar{background:var(--libre);}
   .room-tag.st-ocupado .status-bar{background:var(--ocupado);}
+  .room-tag.st-limpieza .status-bar{background:var(--limpieza);}
 
   .room-top{display:flex;align-items:center;justify-content:space-between;margin-left:6px;}
   .room-num{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:22px;}
@@ -125,6 +129,7 @@
   .room-status-text{margin-left:6px;font-size:13px;font-weight:600;}
   .st-libre .room-status-text{color:var(--libre);}
   .st-ocupado .room-status-text{color:var(--ocupado);}
+  .st-limpieza .room-status-text{color:var(--limpieza);}
 
   .room-sub{margin:3px 0 0 6px;font-size:12.5px;color:var(--ink-soft);line-height:1.4;}
   .room-price{margin:8px 0 0 6px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--ink);}
@@ -246,6 +251,7 @@
       <div class="counters">
         <span class="pill libre"><span class="dot"></span><span id="count-libre">0</span> libres</span>
         <span class="pill ocupado"><span class="dot"></span><span id="count-ocupado">0</span> ocupados</span>
+        <span class="pill limpieza"><span class="dot"></span><span id="count-limpieza">0</span> en limpieza</span>
       </div>
       <div class="header-role-row">
         <span class="role-badge" id="role-badge">—</span>
@@ -367,8 +373,30 @@
     </div>
 
     <div class="field">
+      <label>¿El huésped ya pagó?</label>
+      <select id="ci-ya-pago">
+        <option value="si">Sí, pagó al entrar</option>
+        <option value="no">No, pagará al salir</option>
+      </select>
+    </div>
+
+    <div class="row2" id="ci-pago-detalle">
+      <div class="field">
+        <label>Tipo de pago</label>
+        <select id="ci-tipo-pago">
+          <option value="Efectivo">Efectivo</option>
+          <option value="Yape">Yape</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Monto pagado (S/)</label>
+        <input type="number" id="ci-monto-pagado" min="0" step="1">
+      </div>
+    </div>
+
+    <div class="field">
       <label>Notas (opcional)</label>
-      <textarea id="ci-notas" placeholder="Ej: pago adelantado, mascota, etc."></textarea>
+      <textarea id="ci-notas" placeholder="Ej: mascota, pedido especial, etc."></textarea>
     </div>
 
     <button class="btn btn-primary" id="ci-confirmar">Registrar entrada</button>
@@ -407,7 +435,7 @@
         </select>
       </div>
     </div>
-    <p class="hint">Puedes ajustar el total manualmente si hay descuento.</p>
+    <p class="hint">Si se quedó más noches de las pagadas o hubo descuento, ajusta el total aquí.</p>
 
     <button class="btn btn-primary" id="co-confirmar">Confirmar salida (check-out)</button>
     <button class="btn btn-danger" id="co-cancelar" data-admin-only>Cancelar registro (sin cobro)</button>
@@ -511,7 +539,7 @@ function render() {
   const f3 = document.getElementById('floor-3');
   const f4 = document.getElementById('floor-4');
   f3.innerHTML = ''; f4.innerHTML = '';
-  let libres = 0, ocupados = 0;
+  let libres = 0, ocupados = 0, limpiezas = 0;
 
   ROOMS.forEach(rm => {
     const s = state[rm.num];
@@ -525,6 +553,9 @@ function render() {
     if (s.status === 'ocupado') {
       ocupados++;
       sub = `<p class="room-status-text">Ocupado</p><p class="room-sub">${s.guest.nombre}</p><p class="room-price">${money(s.guest.precio)} / noche</p>`;
+    } else if (s.status === 'limpieza') {
+      limpiezas++;
+      sub = `<p class="room-status-text">En limpieza</p><p class="room-sub">Toca para marcar como limpio</p>`;
     } else {
       libres++;
       sub = `<p class="room-status-text">Disponible</p><p class="room-price">${money(DEFAULT_PRICE[rm.type])} / noche</p>`;
@@ -545,6 +576,7 @@ function render() {
 
   document.getElementById('count-libre').textContent = libres;
   document.getElementById('count-ocupado').textContent = ocupados;
+  document.getElementById('count-limpieza').textContent = limpiezas;
   renderHistory();
   renderGastos();
   renderReporte();
@@ -655,10 +687,20 @@ function openRoom(rm) {
     document.getElementById('ci-personas').value = 1;
     document.getElementById('ci-precio').value = DEFAULT_PRICE[rm.type];
     document.getElementById('ci-notas').value = '';
+    document.getElementById('ci-ya-pago').value = 'si';
+    document.getElementById('ci-tipo-pago').value = 'Efectivo';
+    document.getElementById('ci-monto-pagado').value = DEFAULT_PRICE[rm.type];
+    document.getElementById('ci-pago-detalle').style.display = '';
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('ci-entrada').value = now.toISOString().slice(0,16);
     document.getElementById('overlay-checkin').classList.add('show');
+  } else if (s.status === 'limpieza') {
+    if (confirm(`¿Marcar el cuarto ${rm.num} como limpio y disponible?`)) {
+      state[rm.num] = { status: 'libre' };
+      saveState();
+      render();
+    }
   } else {
     const g = s.guest;
     document.getElementById('co-title').textContent = `Cuarto ${rm.num}`;
@@ -669,14 +711,15 @@ function openRoom(rm) {
       ${g.personas} persona(s)<br>
       Entrada: <b>${new Date(g.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</b><br>
       Noches transcurridas: <b>${nights}</b>
+      ${g.pagoAlEntrar ? `<br><b>Ya pagó S/ ${g.montoPagado} al entrar (${g.tipoPago})</b>` : '<br><b>Pendiente de pago</b>'}
       ${g.notas ? '<br>Notas: ' + g.notas : ''}
     `;
     document.getElementById('co-precio').value = g.precio;
-    document.getElementById('co-total').value = (nights * g.precio).toFixed(2);
+    document.getElementById('co-total').value = g.pagoAlEntrar ? g.montoPagado : (nights * g.precio).toFixed(2);
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     document.getElementById('co-salida').value = now.toISOString().slice(0,16);
-    document.getElementById('co-pago').value = 'Efectivo';
+    document.getElementById('co-pago').value = g.tipoPago || 'Efectivo';
     document.getElementById('overlay-checkout').classList.add('show');
   }
 }
@@ -705,10 +748,18 @@ function recomputeCheckoutTotal() {
 document.getElementById('co-precio').addEventListener('input', recomputeCheckoutTotal);
 document.getElementById('co-salida').addEventListener('input', recomputeCheckoutTotal);
 
+document.getElementById('ci-ya-pago').addEventListener('change', (e) => {
+  document.getElementById('ci-pago-detalle').style.display = (e.target.value === 'si') ? '' : 'none';
+});
+document.getElementById('ci-precio').addEventListener('input', () => {
+  document.getElementById('ci-monto-pagado').value = document.getElementById('ci-precio').value;
+});
+
 document.getElementById('ci-confirmar').addEventListener('click', async () => {
   const nombre = document.getElementById('ci-nombre').value.trim();
   if (!nombre) { alert('Ingresa el nombre del huésped.'); return; }
   const entradaVal = document.getElementById('ci-entrada').value;
+  const yaPago = document.getElementById('ci-ya-pago').value === 'si';
   state[currentRoom.num] = {
     status: 'ocupado',
     guest: {
@@ -717,7 +768,10 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
       personas: parseInt(document.getElementById('ci-personas').value) || 1,
       precio: parseFloat(document.getElementById('ci-precio').value) || DEFAULT_PRICE[currentRoom.type],
       checkin: new Date(entradaVal).toISOString(),
-      notas: document.getElementById('ci-notas').value.trim()
+      notas: document.getElementById('ci-notas').value.trim(),
+      pagoAlEntrar: yaPago,
+      tipoPago: yaPago ? document.getElementById('ci-tipo-pago').value : null,
+      montoPagado: yaPago ? (parseFloat(document.getElementById('ci-monto-pagado').value) || 0) : 0
     }
   };
   await saveState();
@@ -744,7 +798,7 @@ document.getElementById('co-confirmar').addEventListener('click', async () => {
     pago,
     total
   });
-  state[currentRoom.num] = { status: 'libre' };
+  state[currentRoom.num] = { status: 'limpieza' };
   await saveState();
   await saveHistory();
   closeModals();
@@ -854,8 +908,12 @@ document.getElementById('btn-logout').addEventListener('click', () => {
 
 async function attemptLogin(pw) {
   const hint = document.getElementById('lock-hint');
-  const passAdmin = await getPassword('config:pass-admin', DEFAULT_ADMIN_PASS);
-  const passEmpleado = await getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS);
+  hint.textContent = 'Verificando...';
+  hint.className = 'hint';
+  const [passAdmin, passEmpleado] = await Promise.all([
+    getPassword('config:pass-admin', DEFAULT_ADMIN_PASS),
+    getPassword('config:pass-empleado', DEFAULT_EMPLEADO_PASS)
+  ]);
   if (pw === passAdmin) {
     currentRole = 'admin';
   } else if (pw === passEmpleado) {
@@ -875,6 +933,7 @@ document.getElementById('lock-entrar').addEventListener('click', async () => {
 });
 document.getElementById('lock-password').addEventListener('keydown', async (e) => {
   if (e.key === 'Enter') {
+    e.preventDefault();
     const pw = document.getElementById('lock-password').value.trim();
     const ok = await attemptLogin(pw);
     if (ok) await enterApp();
