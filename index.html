@@ -275,6 +275,51 @@
     <div class="room-grid" id="floor-4"></div>
   </div>
 
+  <button class="history-toggle" id="reservas-toggle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Reservas
+  </button>
+  <div class="history-wrap" id="reservas-wrap">
+    <div id="reservas-content">
+      <div class="row2">
+        <div class="field">
+          <label>Cuarto</label>
+          <select id="rs-cuarto"></select>
+        </div>
+        <div class="field">
+          <label>Nombre</label>
+          <input type="text" id="rs-nombre" placeholder="Nombre del huésped">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Teléfono</label>
+          <input type="text" id="rs-telefono" placeholder="Opcional">
+        </div>
+        <div class="field">
+          <label>Adelanto (S/)</label>
+          <input type="number" id="rs-adelanto" min="0" step="1" placeholder="0">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Fecha de llegada</label>
+          <input type="date" id="rs-llegada">
+        </div>
+        <div class="field">
+          <label>Fecha de salida</label>
+          <input type="date" id="rs-salida">
+        </div>
+      </div>
+      <div class="field">
+        <label>Notas</label>
+        <input type="text" id="rs-notas" placeholder="Opcional">
+      </div>
+      <button class="btn btn-primary" id="rs-agregar" style="margin-bottom:16px;">Guardar reserva</button>
+      <div id="reservas-tabla"></div>
+    </div>
+  </div>
+
   <button class="history-toggle" id="history-toggle">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
     Ver historial de estadías
@@ -357,6 +402,11 @@
     <div class="field">
       <label>Nombre completo</label>
       <input type="text" id="ci-nombre" placeholder="Nombre y apellidos">
+    </div>
+
+    <div class="field">
+      <label>Teléfono (opcional)</label>
+      <input type="text" id="ci-telefono" placeholder="Ej: 987654321">
     </div>
 
     <div class="row2">
@@ -480,8 +530,10 @@ const ICON_SIMPLE = `<svg class="type-icon simple" viewBox="0 0 32 20"><path d="
 let state = {};
 let history_ = [];
 let expenses_ = [];
+let reservations_ = [];
 let currentRoom = null;
 let currentRole = null;
+let pendingReservationIndex = null;
 const DEFAULT_ADMIN_PASS = 'admin2026';
 const DEFAULT_EMPLEADO_PASS = 'hospedaje2026';
 
@@ -514,10 +566,11 @@ async function kvSet(key, value) {
 }
 
 async function loadState() {
-  const [r, h, g] = await Promise.all([
+  const [r, h, g, rs] = await Promise.all([
     kvGet('rooms-state'),
     kvGet('history-log'),
-    kvGet('expenses-log')
+    kvGet('expenses-log'),
+    kvGet('reservations-log')
   ]);
   try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
@@ -525,6 +578,11 @@ async function loadState() {
   });
   try { history_ = h ? JSON.parse(h) : []; } catch { history_ = []; }
   try { expenses_ = g ? JSON.parse(g) : []; } catch { expenses_ = []; }
+  try { reservations_ = rs ? JSON.parse(rs) : []; } catch { reservations_ = []; }
+}
+
+async function saveReservations() {
+  await kvSet('reservations-log', JSON.stringify(reservations_));
 }
 
 async function saveExpenses() {
@@ -563,7 +621,13 @@ function render() {
       sub = `<p class="room-status-text">En limpieza</p><p class="room-sub">Toca para marcar como limpio</p>`;
     } else {
       libres++;
-      sub = `<p class="room-status-text">Disponible</p><p class="room-price">${money(DEFAULT_PRICE[rm.type])} / noche</p>`;
+      const todayStr = new Date().toISOString().slice(0,10);
+      const resHoy = reservations_.find(r => r.cuarto === rm.num && r.llegada === todayStr);
+      if (resHoy) {
+        sub = `<p class="room-status-text">Disponible</p><p class="room-sub">Reservado hoy: ${resHoy.nombre}</p><p class="room-price">${money(DEFAULT_PRICE[rm.type])} / noche</p>`;
+      } else {
+        sub = `<p class="room-status-text">Disponible</p><p class="room-price">${money(DEFAULT_PRICE[rm.type])} / noche</p>`;
+      }
     }
 
     card.innerHTML = `
@@ -582,9 +646,22 @@ function render() {
   document.getElementById('count-libre').textContent = libres;
   document.getElementById('count-ocupado').textContent = ocupados;
   document.getElementById('count-limpieza').textContent = limpiezas;
+  populateRoomSelect();
   renderHistory();
   renderGastos();
   renderReporte();
+  renderReservas();
+}
+
+function populateRoomSelect() {
+  const sel = document.getElementById('rs-cuarto');
+  if (sel.options.length) return;
+  ROOMS.forEach(rm => {
+    const opt = document.createElement('option');
+    opt.value = rm.num;
+    opt.textContent = `${rm.num} (${rm.type})`;
+    sel.appendChild(opt);
+  });
 }
 
 function renderHistory() {
@@ -689,6 +766,8 @@ function openRoom(rm) {
     document.getElementById('ci-dni').value = '';
     document.getElementById('ci-dni-hint').textContent = '';
     document.getElementById('ci-nombre').value = '';
+    document.getElementById('ci-telefono').value = '';
+    pendingReservationIndex = null;
     document.getElementById('ci-personas').value = 1;
     document.getElementById('ci-precio').value = DEFAULT_PRICE[rm.type];
     document.getElementById('ci-notas').value = '';
@@ -712,7 +791,7 @@ function openRoom(rm) {
     document.getElementById('co-sub').textContent = `${rm.type[0].toUpperCase()+rm.type.slice(1)}`;
     const nights = calcNights(g.checkin);
     document.getElementById('co-summary').innerHTML = `
-      <b>${g.nombre}</b>${g.dni ? ' · DNI ' + g.dni : ''}<br>
+      <b>${g.nombre}</b>${g.dni ? ' · DNI ' + g.dni : ''}${g.telefono ? ' · ' + g.telefono : ''}<br>
       ${g.personas} persona(s)<br>
       Entrada: <b>${new Date(g.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</b><br>
       Noches transcurridas: <b>${nights}</b>
@@ -739,6 +818,7 @@ function calcNights(checkinIso, checkoutDate) {
 
 function closeModals() {
   document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
+  pendingReservationIndex = null;
 }
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', closeModals));
 document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if (e.target === o) closeModals(); }));
@@ -770,6 +850,7 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
     guest: {
       nombre,
       dni: document.getElementById('ci-dni').value.trim(),
+      telefono: document.getElementById('ci-telefono').value.trim(),
       personas: parseInt(document.getElementById('ci-personas').value) || 1,
       precio: parseFloat(document.getElementById('ci-precio').value) || DEFAULT_PRICE[currentRoom.type],
       checkin: new Date(entradaVal).toISOString(),
@@ -783,6 +864,11 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
   await saveState();
+  if (pendingReservationIndex !== null) {
+    reservations_.splice(pendingReservationIndex, 1);
+    await saveReservations();
+    pendingReservationIndex = null;
+  }
   btn.disabled = false; btn.textContent = original;
   closeModals();
   render();
@@ -800,6 +886,7 @@ document.getElementById('co-confirmar').addEventListener('click', async () => {
     tipo: currentRoom.type,
     huesped: g.nombre,
     dni: g.dni,
+    telefono: g.telefono || '',
     checkin: g.checkin,
     checkout: checkoutIso,
     noches: nights,
@@ -823,6 +910,92 @@ document.getElementById('co-cancelar').addEventListener('click', async () => {
   await saveState();
   closeModals();
   render();
+});
+
+function renderReservas() {
+  const el = document.getElementById('reservas-tabla');
+  if (!el) return;
+  if (!reservations_.length) {
+    el.innerHTML = '<p class="empty-hist">No hay reservas registradas.</p>';
+    return;
+  }
+  const ordenadas = reservations_
+    .map((r, idx) => ({ ...r, idx }))
+    .sort((a, b) => (a.llegada || '').localeCompare(b.llegada || ''));
+
+  const rows = ordenadas.map(r => `
+    <tr>
+      <td>${r.cuarto}</td>
+      <td>${r.nombre}${r.telefono ? ' · ' + r.telefono : ''}</td>
+      <td>${r.llegada ? new Date(r.llegada + 'T00:00:00').toLocaleDateString('es-PE',{dateStyle:'short'}) : '—'}</td>
+      <td>${r.salida ? new Date(r.salida + 'T00:00:00').toLocaleDateString('es-PE',{dateStyle:'short'}) : '—'}</td>
+      <td>${r.adelanto ? money(r.adelanto) : '—'}</td>
+      <td>
+        <button class="icon-btn" style="color:var(--libre);" onclick="checkinDesdeReserva(${r.idx})">Check-in</button>
+        &nbsp;·&nbsp;
+        <button class="icon-btn" onclick="eliminarReserva(${r.idx})">Eliminar</button>
+      </td>
+    </tr>
+  `).join('');
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Cuarto</th><th>Huésped</th><th>Llegada</th><th>Salida</th><th>Adelanto</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+async function eliminarReserva(idx) {
+  if (!confirm('¿Eliminar esta reserva?')) return;
+  reservations_.splice(idx, 1);
+  await saveReservations();
+  renderReservas();
+}
+
+function checkinDesdeReserva(idx) {
+  const r = reservations_[idx];
+  const rm = ROOMS.find(x => x.num === r.cuarto);
+  if (state[r.cuarto].status !== 'libre') {
+    alert(`El cuarto ${r.cuarto} no está libre ahora mismo (está ${state[r.cuarto].status}). Libéralo antes de hacer el check-in de esta reserva.`);
+    return;
+  }
+  openRoom(rm);
+  document.getElementById('ci-nombre').value = r.nombre;
+  document.getElementById('ci-telefono').value = r.telefono || '';
+  let notas = r.notas || '';
+  if (r.adelanto) notas += (notas ? ' · ' : '') + `Adelanto ya pagado: S/ ${r.adelanto}`;
+  document.getElementById('ci-notas').value = notas;
+  pendingReservationIndex = idx;
+}
+
+document.getElementById('rs-agregar').addEventListener('click', async () => {
+  const cuarto = parseInt(document.getElementById('rs-cuarto').value);
+  const nombre = document.getElementById('rs-nombre').value.trim();
+  const telefono = document.getElementById('rs-telefono').value.trim();
+  const adelanto = parseFloat(document.getElementById('rs-adelanto').value) || 0;
+  const llegada = document.getElementById('rs-llegada').value;
+  const salida = document.getElementById('rs-salida').value;
+  const notas = document.getElementById('rs-notas').value.trim();
+  if (!nombre || !llegada) { alert('Completa al menos el nombre y la fecha de llegada.'); return; }
+  reservations_.push({ cuarto, nombre, telefono, adelanto, llegada, salida, notas });
+  const btn = document.getElementById('rs-agregar');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  await saveReservations();
+  btn.disabled = false; btn.textContent = original;
+  document.getElementById('rs-nombre').value = '';
+  document.getElementById('rs-telefono').value = '';
+  document.getElementById('rs-adelanto').value = '';
+  document.getElementById('rs-llegada').value = '';
+  document.getElementById('rs-salida').value = '';
+  document.getElementById('rs-notas').value = '';
+  renderReservas();
+  render();
+});
+
+document.getElementById('reservas-toggle').addEventListener('click', () => {
+  document.getElementById('reservas-toggle').classList.toggle('open');
+  document.getElementById('reservas-wrap').classList.toggle('open');
 });
 
 document.getElementById('history-toggle').addEventListener('click', () => {
@@ -869,6 +1042,7 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
     Tipo: h.tipo || '',
     Huesped: h.huesped,
     DNI: h.dni || '',
+    Telefono: h.telefono || '',
     Entrada: new Date(h.checkin).toLocaleString('es-PE'),
     Salida: new Date(h.checkout).toLocaleString('es-PE'),
     Noches: h.noches,
@@ -882,9 +1056,19 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
     Categoria: g.categoria,
     Monto: g.monto
   }));
+  const reservasData = reservations_.map(r => ({
+    Cuarto: r.cuarto,
+    Huesped: r.nombre,
+    Telefono: r.telefono || '',
+    Llegada: r.llegada || '',
+    Salida: r.salida || '',
+    Adelanto: r.adelanto || '',
+    Notas: r.notas || ''
+  }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(huespedesData), 'Huespedes');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gastosData), 'Gastos');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reservasData), 'Reservas');
   const fechaArchivo = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `respaldo-hospedaje-${fechaArchivo}.xlsx`);
 });
