@@ -320,7 +320,7 @@
         <label>Notas</label>
         <input type="text" id="rs-notas" placeholder="Opcional">
       </div>
-      <p class="hint">Si la fecha de llegada es hoy, al guardar se abre el check-in directo. Si es una fecha futura, queda guardado como reserva.</p>
+      <p class="hint">La reserva queda guardada en la lista. Cuando llegue la fecha, toca el cuadro del cuarto (dirá "Reservado") para hacer el check-in directo.</p>
       <button class="btn btn-primary" id="rs-agregar" style="margin-bottom:16px;">Guardar reserva</button>
       <div id="reservas-tabla"></div>
     </div>
@@ -992,55 +992,20 @@ document.getElementById('rs-agregar').addEventListener('click', async () => {
   const notas = document.getElementById('rs-notas').value.trim();
   if (!nombre || !llegada) { alert('Completa al menos el nombre y la fecha de llegada.'); return; }
 
-  const todayStr = todayLocalStr();
-  const esHoy = llegada === todayStr;
-
-  function limpiarFormularioReserva() {
-    document.getElementById('rs-nombre').value = '';
-    document.getElementById('rs-telefono').value = '';
-    document.getElementById('rs-adelanto').value = '';
-    document.getElementById('rs-llegada').value = '';
-    document.getElementById('rs-salida').value = '';
-    document.getElementById('rs-notas').value = '';
-    actualizarTextoBotonReserva();
-  }
-
-  if (esHoy) {
-    if (!cuarto) { alert('Selecciona un cuarto.'); return; }
-    if (state[cuarto].status !== 'libre') {
-      alert(`El cuarto ${cuarto} no está libre ahora mismo (está ${state[cuarto].status}). Elige otra fecha para guardarlo como reserva, o libera el cuarto primero.`);
-      return;
-    }
-    const rm = ROOMS.find(x => x.num === cuarto);
-    openRoom(rm);
-    document.getElementById('ci-nombre').value = nombre;
-    let ciNotas = notas;
-    if (telefono) ciNotas += (ciNotas ? ' · ' : '') + `Tel: ${telefono}`;
-    if (adelanto) ciNotas += (ciNotas ? ' · ' : '') + `Adelanto ya pagado: S/ ${adelanto}`;
-    document.getElementById('ci-notas').value = ciNotas;
-    pendingReservationIndex = null;
-    limpiarFormularioReserva();
-    return;
-  }
-
   reservations_.push({ cuarto, nombre, telefono, adelanto, llegada, salida, notas });
   const btn = document.getElementById('rs-agregar');
-  const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
   await saveReservations();
-  btn.disabled = false;
-  limpiarFormularioReserva();
+  btn.disabled = false; btn.textContent = 'Guardar reserva';
+  document.getElementById('rs-nombre').value = '';
+  document.getElementById('rs-telefono').value = '';
+  document.getElementById('rs-adelanto').value = '';
+  document.getElementById('rs-llegada').value = '';
+  document.getElementById('rs-salida').value = '';
+  document.getElementById('rs-notas').value = '';
   renderReservas();
   render();
 });
-
-function actualizarTextoBotonReserva() {
-  const llegada = document.getElementById('rs-llegada').value;
-  const todayStr = todayLocalStr();
-  const btn = document.getElementById('rs-agregar');
-  btn.textContent = (llegada === todayStr) ? 'Hacer check-in ahora' : 'Guardar reserva';
-}
-document.getElementById('rs-llegada').addEventListener('change', actualizarTextoBotonReserva);
 
 document.getElementById('reservas-toggle').addEventListener('click', () => {
   document.getElementById('reservas-toggle').classList.toggle('open');
