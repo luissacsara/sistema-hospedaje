@@ -567,6 +567,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 <script>
 const ROOMS = [
   {num:301,type:'matrimonial'},{num:302,type:'simple'},{num:303,type:'simple'},
@@ -847,36 +848,94 @@ function renderGastosAnalisis() {
 
   if (typeof Chart === 'undefined') return;
   const paleta = ['#C08A2E','#A9667A','#4C6B82','#9B5DE5','#2F6F8F','#B3432F','#6B8F71'];
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#5B5347';
+
+  const centerTextPlugin = {
+    id: 'centerText',
+    beforeDraw(chart) {
+      if (chart.config.type !== 'doughnut') return;
+      const { ctx, chartArea: { left, right, top, bottom } } = chart;
+      const cx = (left + right) / 2, cy = (top + bottom) / 2;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = "600 12px 'Inter', sans-serif";
+      ctx.fillStyle = '#5B5347';
+      ctx.fillText('Total', cx, cy - 12);
+      ctx.font = "700 20px 'IBM Plex Mono', monospace";
+      ctx.fillStyle = '#2A2520';
+      ctx.fillText(money(totalMes), cx, cy + 10);
+      ctx.restore();
+    }
+  };
 
   if (chartCategorias) chartCategorias.destroy();
   chartCategorias = new Chart(document.getElementById('chart-categorias'), {
     type: 'doughnut',
     data: {
       labels: categoriasOrdenadas.map(c => c[0]),
-      datasets: [{ data: categoriasOrdenadas.map(c => c[1]), backgroundColor: paleta, borderWidth: 0 }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      cutout: '62%'
-    }
-  });
-
-  if (chartSemanas) chartSemanas.destroy();
-  chartSemanas = new Chart(document.getElementById('chart-semanas'), {
-    type: 'bar',
-    data: {
-      labels: semanas.map((s,i) => `Sem ${i+1}`),
       datasets: [{
-        label: 'Gasto (S/)',
-        data: semanas.map(s => s.total),
-        backgroundColor: '#C08A2E',
-        borderRadius: 6
+        data: categoriasOrdenadas.map(c => c[1]),
+        backgroundColor: paleta,
+        borderColor: '#FBF9F5',
+        borderWidth: 3,
+        hoverOffset: 8
       }]
     },
     options: {
-      plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: true } }
-    }
+      cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          color: '#fff',
+          font: { weight: '700', size: 12 },
+          formatter: (value) => totalMes > 0 ? (value / totalMes * 100).toFixed(0) + '%' : ''
+        },
+        tooltip: {
+          backgroundColor: '#2A2520', padding: 10, cornerRadius: 8,
+          callbacks: { label: (ctx) => ' ' + ctx.label + ': ' + money(ctx.parsed) }
+        }
+      }
+    },
+    plugins: [ChartDataLabels, centerTextPlugin]
+  });
+
+  if (chartSemanas) chartSemanas.destroy();
+  const ctxBar = document.getElementById('chart-semanas').getContext('2d');
+  const gradiente = ctxBar.createLinearGradient(0, 0, 0, 220);
+  gradiente.addColorStop(0, '#C08A2E');
+  gradiente.addColorStop(1, '#E8C784');
+  chartSemanas = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: semanas.map((s,i) => `Sem ${i+1}\n(${s.desde}-${s.hasta})`),
+      datasets: [{
+        data: semanas.map(s => s.total),
+        backgroundColor: gradiente,
+        borderRadius: 8,
+        maxBarThickness: 46
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { display: false },
+        datalabels: {
+          anchor: 'end', align: 'top', color: '#2A2520',
+          font: { weight: '600', size: 11, family: "'IBM Plex Mono', monospace" },
+          formatter: (value) => value > 0 ? money(value) : ''
+        },
+        tooltip: {
+          backgroundColor: '#2A2520', padding: 10, cornerRadius: 8,
+          callbacks: { label: (ctx) => ' ' + money(ctx.parsed.y) + ' · ' + semanas[ctx.dataIndex].cuenta + ' gasto(s)' }
+        }
+      },
+      scales: {
+        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' }, ticks: { callback: v => 'S/ '+v } },
+        x: { grid: { display: false } }
+      }
+    },
+    plugins: [ChartDataLabels]
   });
 }
 
