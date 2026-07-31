@@ -150,29 +150,6 @@
   .history-toggle.open svg{transform:rotate(180deg);}
   .history-wrap{overflow:hidden;max-height:0;transition:max-height .25s ease;}
   .history-wrap.open{max-height:2000px;}
-
-  .tabs-bar{
-    display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 18px;
-    border-bottom:1.5px solid var(--tag-border);
-  }
-  .tab-btn{
-    background:none;border:none;font-family:'Inter';font-weight:600;font-size:14px;
-    color:var(--ink-soft);cursor:pointer;padding:10px 16px;border-radius:10px 10px 0 0;
-    position:relative;top:1.5px;transition:color .15s ease, background .15s ease;
-  }
-  .tab-btn:hover{color:var(--ink);background:rgba(0,0,0,0.03);}
-  .tab-btn.active{
-    color:var(--ink);background:var(--card-bg);
-    border:1.5px solid var(--tag-border);border-bottom:1.5px solid var(--card-bg);
-  }
-  .tab-panel{display:none;}
-  .tab-panel.active{display:block;}
-
-  .cat-bar-row{margin-bottom:10px;}
-  .cat-bar-label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;}
-  .cat-bar-label b{font-family:'IBM Plex Mono',monospace;}
-  .cat-bar-track{background:rgba(0,0,0,0.06);border-radius:6px;height:10px;overflow:hidden;}
-  .cat-bar-fill{height:100%;border-radius:6px;background:var(--danger);}
   table{width:100%;border-collapse:collapse;margin-top:10px;background:var(--card-bg);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
   th,td{padding:10px 12px;text-align:left;font-size:13px;border-bottom:1px solid var(--tag-border);}
   th{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);background:rgba(0,0,0,0.02);}
@@ -187,6 +164,16 @@
   .report-card.neg .value{color:var(--danger);}
   .row-actions{display:flex;justify-content:flex-end;margin-top:6px;}
   .icon-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:12.5px;text-decoration:underline;}
+
+  .chart-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;}
+  .chart-box{
+    background:var(--card-bg);border:1.5px solid var(--tag-border);border-radius:12px;
+    padding:16px;box-shadow:var(--shadow);flex:1;min-width:260px;
+  }
+  .chart-box h4{margin:0 0 12px;font-family:'Fraunces',serif;font-size:15px;font-weight:600;}
+  .chart-box.wide{flex-basis:100%;}
+  .chart-canvas-wrap{position:relative;height:220px;}
+  .chart-canvas-wrap.small{height:180px;}
 
   /* Modal */
   .overlay{
@@ -303,15 +290,11 @@
     <div class="room-grid" id="floor-4"></div>
   </div>
 
-  <div class="tabs-bar">
-    <button class="tab-btn active" data-tab="reservas">Reservas</button>
-    <button class="tab-btn" data-tab="historial">Historial</button>
-    <button class="tab-btn" data-tab="gastos" data-admin-only>Gastos</button>
-    <button class="tab-btn" data-tab="caja" data-admin-only>Flujo de caja</button>
-    <button class="tab-btn" data-tab="reporte" data-admin-only>Reporte mensual</button>
-  </div>
-
-  <div class="tab-panel active" id="panel-reservas">
+  <button class="history-toggle" id="reservas-toggle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Reservas
+  </button>
+  <div class="history-wrap" id="reservas-wrap">
     <div id="reservas-content">
       <div class="row2">
         <div class="field">
@@ -353,11 +336,19 @@
     </div>
   </div>
 
-  <div class="tab-panel" id="panel-historial">
+  <button class="history-toggle" id="history-toggle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Ver historial de estadías
+  </button>
+  <div class="history-wrap" id="history-wrap">
     <div id="history-content"></div>
   </div>
 
-  <div class="tab-panel" id="panel-gastos" data-admin-only>
+  <button class="history-toggle" id="gastos-toggle" data-admin-only>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Gastos
+  </button>
+  <div class="history-wrap" id="gastos-wrap" data-admin-only>
     <div id="gastos-content">
       <div class="row2">
         <div class="field">
@@ -385,41 +376,30 @@
           </select>
         </div>
       </div>
-      <div class="field" style="max-width:220px;">
-        <label>Método de pago</label>
-        <select id="gs-metodo">
-          <option value="Efectivo">Efectivo</option>
-          <option value="Yape">Yape</option>
-        </select>
-      </div>
       <button class="btn btn-primary" id="gs-agregar" style="margin-bottom:16px;">Agregar gasto</button>
-      <div class="field" style="max-width:220px;margin-top:6px;">
-        <label>Mes a analizar</label>
-        <input type="month" id="gs-mes-analisis">
-      </div>
-      <div id="gastos-analisis"></div>
       <div id="gastos-tabla"></div>
     </div>
   </div>
 
-  <div class="tab-panel" id="panel-caja" data-admin-only>
+  <button class="history-toggle" id="caja-toggle" data-admin-only>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Flujo de caja diario
+  </button>
+  <div class="history-wrap" id="caja-wrap" data-admin-only>
     <div id="caja-content">
-      <div class="row2">
-        <div class="field" style="max-width:220px;">
-          <label>Día</label>
-          <input type="date" id="cj-dia">
-        </div>
-        <div class="field" style="max-width:220px;">
-          <label>Fondo para vueltos (S/)</label>
-          <input type="number" id="cj-fondo" min="0" step="1" placeholder="0">
-        </div>
+      <div class="field" style="max-width:220px;">
+        <label>Día</label>
+        <input type="date" id="cd-fecha">
       </div>
-      <button class="btn btn-secondary" id="cj-guardar-fondo" style="margin-bottom:16px;">Guardar fondo del día</button>
       <div id="caja-resultado"></div>
     </div>
   </div>
 
-  <div class="tab-panel" id="panel-reporte" data-admin-only>
+  <button class="history-toggle" id="reporte-toggle" data-admin-only>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+    Reporte mensual
+  </button>
+  <div class="history-wrap" id="reporte-wrap" data-admin-only>
     <div id="reporte-content">
       <div class="field" style="max-width:220px;">
         <label>Mes</label>
@@ -560,6 +540,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
 const ROOMS = [
   {num:301,type:'matrimonial'},{num:302,type:'simple'},{num:303,type:'simple'},
@@ -577,7 +558,6 @@ let history_ = [];
 let expenses_ = [];
 let reservations_ = [];
 let caja_ = [];
-let fondosCaja = {};
 let currentRoom = null;
 let currentRole = null;
 let pendingReservationIndex = null;
@@ -613,13 +593,12 @@ async function kvSet(key, value) {
 }
 
 async function loadState() {
-  const [r, h, g, rs, cj, fc] = await Promise.all([
+  const [r, h, g, rs, cj] = await Promise.all([
     kvGet('rooms-state'),
     kvGet('history-log'),
     kvGet('expenses-log'),
     kvGet('reservations-log'),
-    kvGet('caja-log'),
-    kvGet('caja-fondos')
+    kvGet('caja-log')
   ]);
   try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
@@ -629,7 +608,10 @@ async function loadState() {
   try { expenses_ = g ? JSON.parse(g) : []; } catch { expenses_ = []; }
   try { reservations_ = rs ? JSON.parse(rs) : []; } catch { reservations_ = []; }
   try { caja_ = cj ? JSON.parse(cj) : []; } catch { caja_ = []; }
-  try { fondosCaja = fc ? JSON.parse(fc) : {}; } catch { fondosCaja = {}; }
+}
+
+async function saveCaja() {
+  await kvSet('caja-log', JSON.stringify(caja_));
 }
 
 async function saveReservations() {
@@ -646,26 +628,17 @@ async function saveState() {
 async function saveHistory() {
   await kvSet('history-log', JSON.stringify(history_));
 }
-async function saveCaja() {
-  await kvSet('caja-log', JSON.stringify(caja_));
-}
-async function saveFondos() {
-  await kvSet('caja-fondos', JSON.stringify(fondosCaja));
-}
 
 function money(n){ return 'S/ ' + Number(n).toFixed(2); }
 
-function todayLocalStr() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0,10);
+function localDateStr(input) {
+  const d = input ? new Date(input) : new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
 }
-
-function dateOnlyLocal(dateLike) {
-  const d = new Date(dateLike);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0,10);
-}
+function todayLocalStr() { return localDateStr(); }
 
 function render() {
   const f3 = document.getElementById('floor-3');
@@ -718,10 +691,9 @@ function render() {
   populateRoomSelect();
   renderHistory();
   renderGastos();
-  renderGastosAnalisis();
   renderReporte();
   renderReservas();
-  renderCaja();
+  renderCajaDiaria();
 }
 
 function populateRoomSelect() {
@@ -760,92 +732,6 @@ function renderHistory() {
   `;
 }
 
-function renderGastosAnalisis() {
-  const input = document.getElementById('gs-mes-analisis');
-  if (!input) return;
-  if (!input.value) {
-    const now = new Date();
-    input.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  }
-  const mes = input.value;
-  const [anioSel, mesSel] = mes.split('-').map(Number);
-  let anioPrev = anioSel, mesPrev = mesSel - 1;
-  if (mesPrev === 0) { mesPrev = 12; anioPrev -= 1; }
-  const mesPrevStr = anioPrev + '-' + String(mesPrev).padStart(2,'0');
-
-  const gastosMes = expenses_.filter(g => (g.fecha || '').slice(0,7) === mes);
-  const gastosMesPrev = expenses_.filter(g => (g.fecha || '').slice(0,7) === mesPrevStr);
-  const totalMes = gastosMes.reduce((s,g) => s + Number(g.monto), 0);
-  const totalPrev = gastosMesPrev.reduce((s,g) => s + Number(g.monto), 0);
-  const diff = totalPrev > 0 ? ((totalMes - totalPrev) / totalPrev * 100) : null;
-
-  const porCategoria = {};
-  const conteoCategoria = {};
-  gastosMes.forEach(g => {
-    porCategoria[g.categoria] = (porCategoria[g.categoria] || 0) + Number(g.monto);
-    conteoCategoria[g.categoria] = (conteoCategoria[g.categoria] || 0) + 1;
-  });
-  const categoriasOrdenadas = Object.entries(porCategoria).sort((a,b) => b[1] - a[1]);
-  const categoriaTop = categoriasOrdenadas.length ? categoriasOrdenadas[0][0] : '—';
-  const categoriaMasFrecuente = Object.entries(conteoCategoria).sort((a,b) => b[1] - a[1])[0];
-
-  const el = document.getElementById('gastos-analisis');
-  if (!gastosMes.length) {
-    el.innerHTML = '<p class="empty-hist">No hay gastos registrados en este mes para analizar.</p>';
-    return;
-  }
-
-  const barras = categoriasOrdenadas.map(([cat, monto]) => {
-    const pct = totalMes > 0 ? (monto / totalMes * 100) : 0;
-    const veces = conteoCategoria[cat];
-    return `
-      <div class="cat-bar-row">
-        <div class="cat-bar-label"><span>${cat} · ${veces} ${veces === 1 ? 'vez' : 'veces'}</span><b>${money(monto)} (${pct.toFixed(0)}%)</b></div>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;"></div></div>
-      </div>
-    `;
-  }).join('');
-
-  // Desglose por semana del mes
-  const diasEnMes = new Date(anioSel, mesSel, 0).getDate();
-  const semanas = [];
-  for (let d = 1; d <= diasEnMes; d += 7) {
-    semanas.push({ desde: d, hasta: Math.min(d + 6, diasEnMes), total: 0, cuenta: 0 });
-  }
-  gastosMes.forEach(g => {
-    const dia = Number((g.fecha || '').slice(8,10));
-    const semana = semanas.find(s => dia >= s.desde && dia <= s.hasta);
-    if (semana) { semana.total += Number(g.monto); semana.cuenta += 1; }
-  });
-  const maxSemana = Math.max(...semanas.map(s => s.total), 1);
-  const barrasSemana = semanas.map((s, i) => {
-    const pct = (s.total / maxSemana) * 100;
-    return `
-      <div class="cat-bar-row">
-        <div class="cat-bar-label"><span>Semana ${i+1} (día ${s.desde}–${s.hasta}) · ${s.cuenta} gasto(s)</span><b>${money(s.total)}</b></div>
-        <div class="cat-bar-track"><div class="cat-bar-fill" style="width:${pct}%;background:var(--ocupado);"></div></div>
-      </div>
-    `;
-  }).join('');
-
-  el.innerHTML = `
-    <div class="report-grid">
-      <div class="report-card neg"><div class="label">Total del mes</div><div class="value">${money(totalMes)}</div></div>
-      <div class="report-card"><div class="label">Categoría con más gasto</div><div class="value" style="font-size:15px;">${categoriaTop}</div></div>
-      <div class="report-card ${diff === null ? '' : (diff > 0 ? 'neg' : 'pos')}">
-        <div class="label">Vs. mes anterior</div>
-        <div class="value" style="font-size:16px;">${diff === null ? 'Sin datos' : (diff > 0 ? '+' : '') + diff.toFixed(0) + '%'}</div>
-      </div>
-      <div class="report-card"><div class="label">Total de gastos registrados</div><div class="value">${gastosMes.length}</div></div>
-      <div class="report-card"><div class="label">Categoría más frecuente</div><div class="value" style="font-size:15px;">${categoriaMasFrecuente ? categoriaMasFrecuente[0] + ' (' + categoriaMasFrecuente[1] + ')' : '—'}</div></div>
-    </div>
-    <p class="hint" style="margin-top:10px;">Desglose por categoría (monto y frecuencia):</p>
-    ${barras}
-    <p class="hint" style="margin-top:14px;">Frecuencia por semana del mes:</p>
-    ${barrasSemana}
-  `;
-}
-
 function renderGastos() {
   const el = document.getElementById('gastos-tabla');
   if (!el) return;
@@ -858,14 +744,13 @@ function renderGastos() {
       <td>${new Date(g.fecha + 'T00:00:00').toLocaleDateString('es-PE',{dateStyle:'short'})}</td>
       <td>${g.descripcion}</td>
       <td>${g.categoria}</td>
-      <td>${g.metodo || 'Efectivo'}</td>
       <td>${money(g.monto)}</td>
       <td><button class="icon-btn" data-idx="${idx}" onclick="eliminarGasto(${idx})">Eliminar</button></td>
     </tr>
   `).reverse().join('');
   el.innerHTML = `
     <table>
-      <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Método</th><th>Monto</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
   `;
@@ -876,9 +761,7 @@ async function eliminarGasto(idx) {
   expenses_.splice(idx, 1);
   await saveExpenses();
   renderGastos();
-  renderGastosAnalisis();
   renderReporte();
-  renderCaja();
 }
 
 function monthKey(dateIso) {
@@ -886,21 +769,27 @@ function monthKey(dateIso) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
 }
 
+let chartMesTrend = null;
+let chartMesPago = null;
+let chartCajaPago = null;
+
+function daysInMonth(mesStr) {
+  const [y, m] = mesStr.split('-').map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
 function renderReporte() {
   const input = document.getElementById('rp-mes');
   if (!input) return;
-  if (!input.value) {
-    const now = new Date();
-    input.value = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
-  }
+  if (!input.value) input.value = todayLocalStr().slice(0,7);
   const mes = input.value;
 
-  const ingresosMes = history_.filter(h => monthKey(h.checkout) === mes);
+  const ingresosMes = caja_.filter(c => (c.fecha || '').slice(0,7) === mes);
   const gastosMes = expenses_.filter(g => (g.fecha || '').slice(0,7) === mes);
 
-  const totalIngresos = ingresosMes.reduce((s,h) => s + Number(h.total), 0);
-  const totalYape = ingresosMes.filter(h => h.pago === 'Yape').reduce((s,h) => s + Number(h.total), 0);
-  const totalEfectivo = ingresosMes.filter(h => h.pago === 'Efectivo').reduce((s,h) => s + Number(h.total), 0);
+  const totalIngresos = ingresosMes.reduce((s,c) => s + Number(c.monto || 0), 0);
+  const totalYape = ingresosMes.filter(c => c.metodo === 'Yape').reduce((s,c) => s + Number(c.monto || 0), 0);
+  const totalEfectivo = ingresosMes.filter(c => c.metodo === 'Efectivo').reduce((s,c) => s + Number(c.monto || 0), 0);
   const totalGastos = gastosMes.reduce((s,g) => s + Number(g.monto), 0);
   const neto = totalIngresos - totalGastos;
 
@@ -913,59 +802,126 @@ function renderReporte() {
       <div class="report-card neg"><div class="label">Gastos</div><div class="value">${money(totalGastos)}</div></div>
       <div class="report-card ${neto >= 0 ? 'pos' : 'neg'}"><div class="label">Neto</div><div class="value">${money(neto)}</div></div>
     </div>
-    <p class="hint">${ingresosMes.length} estadía(s) finalizada(s) y ${gastosMes.length} gasto(s) en este mes.</p>
+    <p class="hint">${ingresosMes.length} movimiento(s) de ingreso y ${gastosMes.length} gasto(s) en este mes.</p>
+    <div class="chart-row">
+      <div class="chart-box wide">
+        <h4>Ingresos vs. gastos por día</h4>
+        <div class="chart-canvas-wrap"><canvas id="chart-mes-trend"></canvas></div>
+      </div>
+      <div class="chart-box">
+        <h4>Efectivo vs. Yape</h4>
+        <div class="chart-canvas-wrap small"><canvas id="chart-mes-pago"></canvas></div>
+      </div>
+    </div>
   `;
+
+  if (typeof Chart === 'undefined') return;
+
+  const nDias = daysInMonth(mes);
+  const labels = Array.from({length: nDias}, (_, i) => i+1);
+  const ingresosPorDia = labels.map(d => {
+    const diaStr = mes + '-' + String(d).padStart(2,'0');
+    return ingresosMes.filter(c => c.fecha === diaStr).reduce((s,c) => s + Number(c.monto || 0), 0);
+  });
+  const gastosPorDia = labels.map(d => {
+    const diaStr = mes + '-' + String(d).padStart(2,'0');
+    return gastosMes.filter(g => g.fecha === diaStr).reduce((s,g) => s + Number(g.monto || 0), 0);
+  });
+
+  if (chartMesTrend) chartMesTrend.destroy();
+  chartMesTrend = new Chart(document.getElementById('chart-mes-trend'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Ingresos', data: ingresosPorDia, backgroundColor: '#6B8F71', borderRadius: 4 },
+        { label: 'Gastos', data: gastosPorDia, backgroundColor: '#B3432F', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: '#e8e4da' }, ticks: { callback: v => 'S/ ' + v } }
+      },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
+
+  if (chartMesPago) chartMesPago.destroy();
+  chartMesPago = new Chart(document.getElementById('chart-mes-pago'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Efectivo', 'Yape'],
+      datasets: [{ data: [totalEfectivo, totalYape], backgroundColor: ['#C08A2E', '#2F6F8F'], borderWidth: 0 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '65%',
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+    }
+  });
 }
 
-function renderCaja() {
-  const input = document.getElementById('cj-dia');
+function renderCajaDiaria() {
+  const input = document.getElementById('cd-fecha');
   if (!input) return;
   if (!input.value) input.value = todayLocalStr();
-  const dia = input.value;
-  document.getElementById('cj-fondo').value = fondosCaja[dia] || '';
+  const fecha = input.value;
 
-  const fondo = Number(fondosCaja[dia]) || 0;
-  const ingresosDia = caja_.filter(c => c.fecha === dia);
-  const gastosDia = expenses_.filter(g => g.fecha === dia);
+  const ingresosHoy = caja_.filter(c => c.fecha === fecha);
+  const gastosHoy = expenses_.filter(g => (g.fecha || '') === fecha);
+
+  const totalIngresos = ingresosHoy.reduce((s,c) => s + Number(c.monto || 0), 0);
+  const totalYape = ingresosHoy.filter(c => c.metodo === 'Yape').reduce((s,c) => s + Number(c.monto || 0), 0);
+  const totalEfectivo = ingresosHoy.filter(c => c.metodo === 'Efectivo').reduce((s,c) => s + Number(c.monto || 0), 0);
+  const totalGastos = gastosHoy.reduce((s,g) => s + Number(g.monto), 0);
+  const neto = totalIngresos - totalGastos;
 
   const movimientos = [
-    ...ingresosDia.map(c => ({ hora: c.hora || '', concepto: c.concepto, metodo: c.metodo, monto: c.monto, tipo: 'ingreso' })),
-    ...gastosDia.map(g => ({ hora: '', concepto: g.descripcion, metodo: g.metodo || 'Efectivo', monto: g.monto, tipo: 'egreso' }))
-  ].sort((a,b) => (a.hora || '').localeCompare(b.hora || ''));
+    ...ingresosHoy.map(c => ({ tipo: 'Ingreso', detalle: c.concepto, monto: c.monto, pago: c.metodo })),
+    ...gastosHoy.map(g => ({ tipo: 'Gasto', detalle: g.descripcion, monto: -g.monto, pago: g.categoria }))
+  ];
 
-  const ingEfectivo = ingresosDia.filter(c => c.metodo === 'Efectivo').reduce((s,c) => s + Number(c.monto), 0);
-  const ingYape = ingresosDia.filter(c => c.metodo === 'Yape').reduce((s,c) => s + Number(c.monto), 0);
-  const egEfectivo = gastosDia.filter(g => (g.metodo || 'Efectivo') === 'Efectivo').reduce((s,g) => s + Number(g.monto), 0);
-  const egYape = gastosDia.filter(g => (g.metodo || 'Efectivo') === 'Yape').reduce((s,g) => s + Number(g.monto), 0);
-  const saldoEfectivo = fondo + ingEfectivo - egEfectivo;
-  const saldoYape = ingYape - egYape;
-
-  const filas = movimientos.length ? movimientos.map(m => `
-    <tr>
-      <td>${m.tipo === 'ingreso' ? 'Ingreso' : 'Egreso'}</td>
-      <td>${m.concepto}</td>
-      <td>${m.metodo}</td>
-      <td style="color:${m.tipo === 'ingreso' ? 'var(--libre)' : 'var(--danger)'};font-weight:600;">
-        ${m.tipo === 'ingreso' ? '+' : '-'} ${money(m.monto)}
-      </td>
-    </tr>
-  `).join('') : '<tr><td colspan="4" class="empty-hist">Sin movimientos este día.</td></tr>';
-
-  const el = document.getElementById('caja-resultado');
-  el.innerHTML = `
+  const resultado = document.getElementById('caja-resultado');
+  resultado.innerHTML = `
     <div class="report-grid">
-      <div class="report-card pos"><div class="label">Efectivo en caja</div><div class="value">${money(saldoEfectivo)}</div></div>
-      <div class="report-card"><div class="label">Yape del día</div><div class="value">${money(saldoYape)}</div></div>
-      <div class="report-card"><div class="label">Fondo para vueltos</div><div class="value">${money(fondo)}</div></div>
-      <div class="report-card pos"><div class="label">Ingresos efectivo</div><div class="value">${money(ingEfectivo)}</div></div>
-      <div class="report-card neg"><div class="label">Egresos efectivo</div><div class="value">${money(egEfectivo)}</div></div>
+      <div class="report-card pos"><div class="label">Ingresos</div><div class="value">${money(totalIngresos)}</div></div>
+      <div class="report-card"><div class="label">Efectivo</div><div class="value">${money(totalEfectivo)}</div></div>
+      <div class="report-card"><div class="label">Yape</div><div class="value">${money(totalYape)}</div></div>
+      <div class="report-card neg"><div class="label">Gastos</div><div class="value">${money(totalGastos)}</div></div>
+      <div class="report-card ${neto >= 0 ? 'pos' : 'neg'}"><div class="label">Neto del día</div><div class="value">${money(neto)}</div></div>
     </div>
-    <p class="hint">Efectivo en caja = fondo para vueltos + ingresos en efectivo − egresos en efectivo (el Yape se muestra aparte porque no es dinero físico).</p>
+    ${(totalEfectivo + totalYape) > 0 ? `
+    <div class="chart-row">
+      <div class="chart-box">
+        <h4>Efectivo vs. Yape</h4>
+        <div class="chart-canvas-wrap small"><canvas id="chart-caja-pago"></canvas></div>
+      </div>
+    </div>` : ''}
+    ${movimientos.length ? `
     <table>
-      <thead><tr><th>Movimiento</th><th>Concepto</th><th>Método</th><th>Monto</th></tr></thead>
-      <tbody>${filas}</tbody>
-    </table>
+      <thead><tr><th>Tipo</th><th>Detalle</th><th>Pago</th><th>Monto</th></tr></thead>
+      <tbody>
+        ${movimientos.map(m => `<tr><td>${m.tipo}</td><td>${m.detalle}</td><td>${m.pago || '—'}</td><td>${money(m.monto)}</td></tr>`).join('')}
+      </tbody>
+    </table>` : '<p class="empty-hist">Sin movimientos ese día.</p>'}
   `;
+
+  if (typeof Chart === 'undefined') return;
+  if (chartCajaPago) chartCajaPago.destroy();
+  if (totalEfectivo + totalYape > 0) {
+    chartCajaPago = new Chart(document.getElementById('chart-caja-pago'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Efectivo', 'Yape'],
+        datasets: [{ data: [totalEfectivo, totalYape], backgroundColor: ['#C08A2E', '#2F6F8F'], borderWidth: 0 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '65%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+      }
+    });
+  }
 }
 
 function openRoom(rm) {
@@ -1065,10 +1021,6 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
   if (!nombre) { alert('Ingresa el nombre del huésped.'); return; }
   const entradaVal = document.getElementById('ci-entrada').value;
   const yaPago = document.getElementById('ci-ya-pago').value === 'si';
-  const checkinIso = new Date(entradaVal).toISOString();
-  const stayId = `${currentRoom.num}-${checkinIso}`;
-  const montoPagado = yaPago ? (parseFloat(document.getElementById('ci-monto-pagado').value) || 0) : 0;
-  const tipoPago = yaPago ? document.getElementById('ci-tipo-pago').value : null;
   state[currentRoom.num] = {
     status: 'ocupado',
     guest: {
@@ -1076,29 +1028,30 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
       dni: document.getElementById('ci-dni').value.trim(),
       personas: parseInt(document.getElementById('ci-personas').value) || 1,
       precio: parseFloat(document.getElementById('ci-precio').value) || DEFAULT_PRICE[currentRoom.type],
-      checkin: checkinIso,
+      checkin: new Date(entradaVal).toISOString(),
       notas: document.getElementById('ci-notas').value.trim(),
       pagoAlEntrar: yaPago,
-      tipoPago,
-      montoPagado,
-      stayId
+      tipoPago: yaPago ? document.getElementById('ci-tipo-pago').value : null,
+      montoPagado: yaPago ? (parseFloat(document.getElementById('ci-monto-pagado').value) || 0) : 0
     }
   };
   const btn = document.getElementById('ci-confirmar');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
-  if (yaPago && montoPagado > 0) {
-    caja_.push({
-      id: stayId + '-entrada',
-      fecha: dateOnlyLocal(checkinIso),
-      hora: entradaVal.slice(11,16),
-      monto: montoPagado,
-      metodo: tipoPago,
-      concepto: `Cuarto ${currentRoom.num} - ${nombre} (pago al entrar)`
-    });
-    await saveCaja();
+  const tareas = [saveState()];
+  if (yaPago) {
+    const montoPagado = parseFloat(document.getElementById('ci-monto-pagado').value) || 0;
+    if (montoPagado > 0) {
+      caja_.push({
+        fecha: entradaVal.slice(0,10),
+        concepto: `Adelanto · Cuarto ${currentRoom.num} · ${nombre}`,
+        monto: montoPagado,
+        metodo: document.getElementById('ci-tipo-pago').value
+      });
+      tareas.push(saveCaja());
+    }
   }
-  await saveState();
+  await Promise.all(tareas);
   if (pendingReservationIndex !== null) {
     reservations_.splice(pendingReservationIndex, 1);
     await saveReservations();
@@ -1128,23 +1081,24 @@ document.getElementById('co-confirmar').addEventListener('click', async () => {
     pago,
     total
   });
-  const yaPagadoAntes = g.pagoAlEntrar ? Number(g.montoPagado) : 0;
-  const pendiente = Math.max(0, total - yaPagadoAntes);
-  if (pendiente > 0) {
+  const yaPagadoAntes = g.pagoAlEntrar ? (g.montoPagado || 0) : 0;
+  const saldoPendiente = Math.max(0, total - yaPagadoAntes);
+  const fechaLocalSalida = salidaVal ? salidaVal.slice(0,10) : todayLocalStr();
+  if (saldoPendiente > 0) {
     caja_.push({
-      id: (g.stayId || (currentRoom.num + '-' + g.checkin)) + '-salida',
-      fecha: dateOnlyLocal(checkoutIso),
-      hora: salidaVal ? salidaVal.slice(11,16) : '',
-      monto: pendiente,
-      metodo: pago,
-      concepto: `Cuarto ${currentRoom.num} - ${g.nombre} (pago al salir)`
+      fecha: fechaLocalSalida,
+      concepto: `Saldo check-out · Cuarto ${currentRoom.num} · ${g.nombre}`,
+      monto: saldoPendiente,
+      metodo: pago
     });
   }
   state[currentRoom.num] = { status: 'limpieza' };
   const btn = document.getElementById('co-confirmar');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
-  await Promise.all([saveState(), saveHistory(), saveCaja()]);
+  const tareas = [saveState(), saveHistory()];
+  if (saldoPendiente > 0) tareas.push(saveCaja());
+  await Promise.all(tareas);
   btn.disabled = false; btn.textContent = original;
   closeModals();
   render();
@@ -1152,14 +1106,6 @@ document.getElementById('co-confirmar').addEventListener('click', async () => {
 
 document.getElementById('co-cancelar').addEventListener('click', async () => {
   if (!confirm('¿Liberar este cuarto sin registrar cobro? Se usa solo si fue un error.')) return;
-  const g = state[currentRoom.num].guest;
-  if (g && g.stayId) {
-    const idx = caja_.findIndex(c => c.id === g.stayId + '-entrada');
-    if (idx >= 0) {
-      caja_.splice(idx, 1);
-      await saveCaja();
-    }
-  }
   state[currentRoom.num] = { status: 'libre' };
   await saveState();
   closeModals();
@@ -1247,29 +1193,32 @@ document.getElementById('rs-agregar').addEventListener('click', async () => {
   render();
 });
 
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'caja') renderCaja();
-    if (btn.dataset.tab === 'reporte') renderReporte();
-  });
+document.getElementById('reservas-toggle').addEventListener('click', () => {
+  document.getElementById('reservas-toggle').classList.toggle('open');
+  document.getElementById('reservas-wrap').classList.toggle('open');
 });
 
-document.getElementById('cj-dia').addEventListener('change', renderCaja);
+document.getElementById('history-toggle').addEventListener('click', () => {
+  document.getElementById('history-toggle').classList.toggle('open');
+  document.getElementById('history-wrap').classList.toggle('open');
+});
 
-document.getElementById('cj-guardar-fondo').addEventListener('click', async () => {
-  const dia = document.getElementById('cj-dia').value || todayLocalStr();
-  const monto = parseFloat(document.getElementById('cj-fondo').value) || 0;
-  fondosCaja[dia] = monto;
-  const btn = document.getElementById('cj-guardar-fondo');
-  const original = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  await saveFondos();
-  btn.disabled = false; btn.textContent = original;
-  renderCaja();
+document.getElementById('gastos-toggle').addEventListener('click', () => {
+  document.getElementById('gastos-toggle').classList.toggle('open');
+  document.getElementById('gastos-wrap').classList.toggle('open');
+});
+
+document.getElementById('caja-toggle').addEventListener('click', () => {
+  document.getElementById('caja-toggle').classList.toggle('open');
+  document.getElementById('caja-wrap').classList.toggle('open');
+  renderCajaDiaria();
+});
+document.getElementById('cd-fecha').addEventListener('change', renderCajaDiaria);
+
+document.getElementById('reporte-toggle').addEventListener('click', () => {
+  document.getElementById('reporte-toggle').classList.toggle('open');
+  document.getElementById('reporte-wrap').classList.toggle('open');
+  renderReporte();
 });
 
 document.getElementById('rp-mes').addEventListener('change', renderReporte);
@@ -1278,10 +1227,9 @@ document.getElementById('gs-agregar').addEventListener('click', async () => {
   const fecha = document.getElementById('gs-fecha').value;
   const desc = document.getElementById('gs-desc').value.trim();
   const cat = document.getElementById('gs-cat').value;
-  const metodo = document.getElementById('gs-metodo').value;
   const monto = parseFloat(document.getElementById('gs-monto').value);
   if (!fecha || !desc || !monto) { alert('Completa fecha, descripción y monto.'); return; }
-  expenses_.push({ fecha, descripcion: desc, categoria: cat, metodo, monto });
+  expenses_.push({ fecha, descripcion: desc, categoria: cat, monto });
   const btn = document.getElementById('gs-agregar');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -1291,12 +1239,8 @@ document.getElementById('gs-agregar').addEventListener('click', async () => {
   document.getElementById('gs-desc').value = '';
   document.getElementById('gs-monto').value = '';
   renderGastos();
-  renderGastosAnalisis();
   renderReporte();
-  renderCaja();
 });
-
-document.getElementById('gs-mes-analisis').addEventListener('change', renderGastosAnalisis);
 
 document.getElementById('btn-exportar').addEventListener('click', () => {
   if (typeof XLSX === 'undefined') { alert('No se pudo cargar la librería de Excel. Revisa tu conexión.'); return; }
@@ -1316,7 +1260,6 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
     Fecha: g.fecha,
     Descripcion: g.descripcion,
     Categoria: g.categoria,
-    Metodo: g.metodo || 'Efectivo',
     Monto: g.monto
   }));
   const reservasData = reservations_.map(r => ({
@@ -1328,18 +1271,13 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
     Adelanto: r.adelanto || '',
     Notas: r.notas || ''
   }));
-  const cajaData = caja_.map(c => ({
-    Fecha: c.fecha,
-    Hora: c.hora || '',
-    Concepto: c.concepto,
-    Metodo: c.metodo,
-    Monto: c.monto
-  }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(huespedesData), 'Huespedes');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gastosData), 'Gastos');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reservasData), 'Reservas');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cajaData), 'Caja');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(caja_.map(c => ({
+    Fecha: c.fecha, Concepto: c.concepto, Monto: c.monto, Metodo: c.metodo
+  }))), 'Caja diaria');
   const fechaArchivo = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `respaldo-hospedaje-${fechaArchivo}.xlsx`);
 });
