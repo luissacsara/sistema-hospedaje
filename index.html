@@ -141,6 +141,19 @@
 
   .room-sub{margin:3px 0 0 6px;font-size:12.5px;color:var(--ink-soft);line-height:1.4;}
   .room-price{margin:8px 0 0 6px;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--ink);}
+  .room-elapsed{margin:5px 0 0 6px;font-size:13px;font-weight:700;color:var(--ink);}
+
+  .room-tag.room-vencido{border-color:var(--danger);box-shadow:0 0 0 2px rgba(179,67,47,0.25), var(--shadow);animation:pulseVencido 1.8s ease-in-out infinite;}
+  @keyframes pulseVencido{0%,100%{box-shadow:0 0 0 2px rgba(179,67,47,0.25), var(--shadow);}50%{box-shadow:0 0 0 5px rgba(179,67,47,0.12), var(--shadow);}}
+  .room-tag.room-proximo{border-color:var(--ocupado);}
+
+  #alertas-banner{margin-bottom:20px;}
+  .alerta-item{
+    display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:12px;
+    font-size:13.5px;font-weight:600;margin-bottom:8px;
+  }
+  .alerta-item.venc{background:#F6E4DF;color:var(--danger);border:1.5px solid var(--danger);}
+  .alerta-item.prox{background:var(--ocupado-bg);color:var(--ocupado);border:1.5px solid var(--ocupado);}
 
   .history-toggle{
     background:none;border:none;font-family:'Inter';font-weight:600;font-size:14.5px;
@@ -300,6 +313,8 @@
     </button>
   </header>
 
+  <div id="alertas-banner" style="display:none;"></div>
+
   <div class="floor">
     <p class="floor-label">Piso 3</p>
     <div class="room-grid" id="floor-3"></div>
@@ -410,18 +425,18 @@
 
   <div class="tab-panel" id="panel-caja" data-admin-only>
     <div id="caja-content">
-      <div class="row2">
-        <div class="field" style="max-width:220px;">
-          <label>Día</label>
-          <input type="date" id="cj-dia">
-        </div>
-        <div class="field" style="max-width:220px;">
-          <label>Fondo para vueltos (S/)</label>
-          <input type="number" id="cj-fondo" min="0" step="1" placeholder="0">
-        </div>
+      <p class="hint" id="cj-periodo-info" style="margin-bottom:12px;"></p>
+      <div class="field" style="max-width:220px;">
+        <label>Fondo para vueltos de este turno (S/)</label>
+        <input type="number" id="cj-fondo" min="0" step="1" placeholder="0">
       </div>
-      <button class="btn btn-secondary" id="cj-guardar-fondo" style="margin-bottom:16px;">Guardar fondo del día</button>
+      <div class="row2" style="margin-bottom:16px;">
+        <button class="btn btn-secondary" id="cj-guardar-fondo">Guardar fondo</button>
+        <button class="btn btn-primary" id="cj-hacer-corte">Hacer corte de caja ahora</button>
+      </div>
       <div id="caja-resultado"></div>
+      <p class="hint" style="margin-top:22px;">Cortes anteriores:</p>
+      <div id="caja-historial-cortes"></div>
     </div>
   </div>
 
@@ -462,8 +477,8 @@
 
     <div class="row2">
       <div class="field">
-        <label>N° de personas</label>
-        <input type="number" id="ci-personas" min="1" value="1">
+        <label>Número de noches</label>
+        <input type="number" id="ci-noches" min="1" value="1">
       </div>
       <div class="field">
         <label>Precio por noche (S/)</label>
@@ -586,6 +601,7 @@ let expenses_ = [];
 let reservations_ = [];
 let caja_ = [];
 let fondosCaja = {};
+let cortes_ = [];
 let currentRoom = null;
 let currentRole = null;
 let pendingReservationIndex = null;
@@ -623,13 +639,14 @@ async function kvSet(key, value) {
 }
 
 async function loadState() {
-  const [r, h, g, rs, cj, fc] = await Promise.all([
+  const [r, h, g, rs, cj, fc, ct] = await Promise.all([
     kvGet('rooms-state'),
     kvGet('history-log'),
     kvGet('expenses-log'),
     kvGet('reservations-log'),
     kvGet('caja-log'),
-    kvGet('caja-fondos')
+    kvGet('caja-fondos'),
+    kvGet('caja-cortes')
   ]);
   try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
@@ -640,6 +657,11 @@ async function loadState() {
   try { reservations_ = rs ? JSON.parse(rs) : []; } catch { reservations_ = []; }
   try { caja_ = cj ? JSON.parse(cj) : []; } catch { caja_ = []; }
   try { fondosCaja = fc ? JSON.parse(fc) : {}; } catch { fondosCaja = {}; }
+  try { cortes_ = ct ? JSON.parse(ct) : []; } catch { cortes_ = []; }
+}
+
+async function saveCortes() {
+  await kvSet('caja-cortes', JSON.stringify(cortes_));
 }
 
 async function saveReservations() {
@@ -696,7 +718,7 @@ function render() {
     let sub = '';
     if (s.status === 'ocupado') {
       ocupados++;
-      sub = `<p class="room-status-text">Ocupado</p><p class="room-sub">${s.guest.nombre}</p><p class="room-price">${money(s.guest.precio)} / noche</p>`;
+      sub = `<p class="room-status-text">Ocupado</p><p class="room-sub">${s.guest.nombre}</p><p class="room-elapsed">Entró: ${new Date(s.guest.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})} · ${s.guest.noches || 1} noche(s)</p><p class="room-price">${money(s.guest.precio)} / noche</p>`;
     } else if (s.status === 'limpieza') {
       limpiezas++;
       sub = `<p class="room-status-text">En limpieza</p><p class="room-sub">Toca para marcar como limpio</p>`;
@@ -732,6 +754,7 @@ function render() {
   renderReporte();
   renderReservas();
   renderCaja();
+  renderAlertas();
 }
 
 function populateRoomSelect() {
@@ -747,19 +770,41 @@ function populateRoomSelect() {
 
 function renderHistory() {
   const el = document.getElementById('history-content');
-  if (!history_.length) {
-    el.innerHTML = '<p class="empty-hist">Todavía no hay estadías finalizadas.</p>';
+
+  const enCurso = ROOMS
+    .filter(rm => state[rm.num] && state[rm.num].status === 'ocupado')
+    .map(rm => {
+      const g = state[rm.num].guest;
+      return {
+        habitacion: rm.num,
+        huesped: g.nombre,
+        checkin: g.checkin,
+        checkout: null,
+        noches: calcNights(g.checkin),
+        pago: g.pagoAlEntrar ? g.tipoPago : null,
+        total: g.pagoAlEntrar ? g.montoPagado : null,
+        enCurso: true
+      };
+    })
+    .sort((a,b) => new Date(b.checkin) - new Date(a.checkin));
+
+  const finalizadas = [...history_].reverse().map(h => ({ ...h, enCurso: false }));
+
+  if (!enCurso.length && !finalizadas.length) {
+    el.innerHTML = '<p class="empty-hist">Todavía no hay estadías registradas.</p>';
     return;
   }
-  const rows = [...history_].reverse().map(h => `
+
+  const todas = [...enCurso, ...finalizadas];
+  const rows = todas.map(h => `
     <tr>
       <td>${h.habitacion}</td>
       <td>${h.huesped}</td>
       <td>${new Date(h.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
-      <td>${new Date(h.checkout).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
+      <td>${h.enCurso ? '<b style="color:var(--ocupado);">En curso</b>' : new Date(h.checkout).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
       <td>${h.noches}</td>
-      <td>${h.pago || '—'}</td>
-      <td>${money(h.total)}</td>
+      <td>${h.pago || (h.enCurso ? 'Pendiente' : '—')}</td>
+      <td>${h.total != null ? money(h.total) : '—'}</td>
     </tr>
   `).join('');
   el.innerHTML = `
@@ -988,12 +1033,12 @@ function renderReporte() {
   }
   const mes = input.value;
 
-  const ingresosMes = history_.filter(h => monthKey(h.checkout) === mes);
+  const ingresosMes = caja_.filter(c => (c.fecha || '').slice(0,7) === mes);
   const gastosMes = expenses_.filter(g => (g.fecha || '').slice(0,7) === mes);
 
-  const totalIngresos = ingresosMes.reduce((s,h) => s + Number(h.total), 0);
-  const totalYape = ingresosMes.filter(h => h.pago === 'Yape').reduce((s,h) => s + Number(h.total), 0);
-  const totalEfectivo = ingresosMes.filter(h => h.pago === 'Efectivo').reduce((s,h) => s + Number(h.total), 0);
+  const totalIngresos = ingresosMes.reduce((s,c) => s + Number(c.monto), 0);
+  const totalYape = ingresosMes.filter(c => c.metodo === 'Yape').reduce((s,c) => s + Number(c.monto), 0);
+  const totalEfectivo = ingresosMes.filter(c => c.metodo === 'Efectivo').reduce((s,c) => s + Number(c.monto), 0);
   const totalGastos = gastosMes.reduce((s,g) => s + Number(g.monto), 0);
   const neto = totalIngresos - totalGastos;
 
@@ -1006,32 +1051,51 @@ function renderReporte() {
       <div class="report-card neg"><div class="label">Gastos</div><div class="value">${money(totalGastos)}</div></div>
       <div class="report-card ${neto >= 0 ? 'pos' : 'neg'}"><div class="label">Neto</div><div class="value">${money(neto)}</div></div>
     </div>
-    <p class="hint">${ingresosMes.length} estadía(s) finalizada(s) y ${gastosMes.length} gasto(s) en este mes.</p>
+    <p class="hint">${ingresosMes.length} cobro(s) recibido(s) y ${gastosMes.length} gasto(s) en este mes. Los ingresos se cuentan en el mes en que realmente se cobraron (entrada o salida), no en el mes del check-out.</p>
   `;
 }
 
+function inicioDelPeriodoActual() {
+  return cortes_.length ? new Date(cortes_[cortes_.length - 1].timestamp) : new Date(0);
+}
+
+function calcularPeriodo(desde, hasta) {
+  const ingresosP = caja_.filter(c => {
+    const t = new Date(c.fecha + 'T' + (c.hora || '00:00'));
+    return t > desde && t <= hasta;
+  });
+  const gastosP = expenses_.filter(g => {
+    const t = new Date(g.fecha + 'T12:00:00'); // los gastos no guardan hora exacta
+    return t > desde && t <= hasta;
+  });
+  const ingEfectivo = ingresosP.filter(c => c.metodo === 'Efectivo').reduce((s,c) => s + Number(c.monto), 0);
+  const ingYape = ingresosP.filter(c => c.metodo === 'Yape').reduce((s,c) => s + Number(c.monto), 0);
+  const egEfectivo = gastosP.filter(g => (g.metodo || 'Efectivo') === 'Efectivo').reduce((s,g) => s + Number(g.monto), 0);
+  const egYape = gastosP.filter(g => (g.metodo || 'Efectivo') === 'Yape').reduce((s,g) => s + Number(g.monto), 0);
+  return { ingresosP, gastosP, ingEfectivo, ingYape, egEfectivo, egYape };
+}
+
 function renderCaja() {
-  const input = document.getElementById('cj-dia');
-  if (!input) return;
-  if (!input.value) input.value = todayLocalStr();
-  const dia = input.value;
-  document.getElementById('cj-fondo').value = fondosCaja[dia] || '';
+  const elInfo = document.getElementById('cj-periodo-info');
+  if (!elInfo) return;
 
-  const fondo = Number(fondosCaja[dia]) || 0;
-  const ingresosDia = caja_.filter(c => c.fecha === dia);
-  const gastosDia = expenses_.filter(g => g.fecha === dia);
+  const desde = inicioDelPeriodoActual();
+  const ultimoCorte = cortes_.length ? cortes_[cortes_.length - 1] : null;
+  const fondo = ultimoCorte ? Number(ultimoCorte.fondoSiguiente || 0) : (Number(fondosCaja['actual']) || 0);
+  document.getElementById('cj-fondo').value = fondo || '';
 
-  const movimientos = [
-    ...ingresosDia.map(c => ({ hora: c.hora || '', concepto: c.concepto, metodo: c.metodo, monto: c.monto, tipo: 'ingreso' })),
-    ...gastosDia.map(g => ({ hora: '', concepto: g.descripcion, metodo: g.metodo || 'Efectivo', monto: g.monto, tipo: 'egreso' }))
-  ].sort((a,b) => (a.hora || '').localeCompare(b.hora || ''));
+  elInfo.textContent = ultimoCorte
+    ? `Turno actual: desde el último corte (${new Date(ultimoCorte.timestamp).toLocaleString('es-PE',{dateStyle:'medium',timeStyle:'short'})}) hasta ahora.`
+    : `Turno actual: desde el inicio de tus registros hasta ahora (todavía no has hecho ningún corte).`;
 
-  const ingEfectivo = ingresosDia.filter(c => c.metodo === 'Efectivo').reduce((s,c) => s + Number(c.monto), 0);
-  const ingYape = ingresosDia.filter(c => c.metodo === 'Yape').reduce((s,c) => s + Number(c.monto), 0);
-  const egEfectivo = gastosDia.filter(g => (g.metodo || 'Efectivo') === 'Efectivo').reduce((s,g) => s + Number(g.monto), 0);
-  const egYape = gastosDia.filter(g => (g.metodo || 'Efectivo') === 'Yape').reduce((s,g) => s + Number(g.monto), 0);
+  const { ingresosP, gastosP, ingEfectivo, ingYape, egEfectivo, egYape } = calcularPeriodo(desde, new Date());
   const saldoEfectivo = fondo + ingEfectivo - egEfectivo;
   const saldoYape = ingYape - egYape;
+
+  const movimientos = [
+    ...ingresosP.map(c => ({ hora: c.hora || '', concepto: c.concepto, metodo: c.metodo, monto: c.monto, tipo: 'ingreso' })),
+    ...gastosP.map(g => ({ hora: '', concepto: g.descripcion, metodo: g.metodo || 'Efectivo', monto: g.monto, tipo: 'egreso' }))
+  ].sort((a,b) => (a.hora || '').localeCompare(b.hora || ''));
 
   const filas = movimientos.length ? movimientos.map(m => `
     <tr>
@@ -1042,23 +1106,43 @@ function renderCaja() {
         ${m.tipo === 'ingreso' ? '+' : '-'} ${money(m.monto)}
       </td>
     </tr>
-  `).join('') : '<tr><td colspan="4" class="empty-hist">Sin movimientos este día.</td></tr>';
+  `).join('') : '<tr><td colspan="4" class="empty-hist">Sin movimientos en este turno todavía.</td></tr>';
 
   const el = document.getElementById('caja-resultado');
   el.innerHTML = `
     <div class="report-grid">
       <div class="report-card pos"><div class="label">Efectivo en caja</div><div class="value">${money(saldoEfectivo)}</div></div>
-      <div class="report-card"><div class="label">Yape del día</div><div class="value">${money(saldoYape)}</div></div>
+      <div class="report-card"><div class="label">Yape del turno</div><div class="value">${money(saldoYape)}</div></div>
       <div class="report-card"><div class="label">Fondo para vueltos</div><div class="value">${money(fondo)}</div></div>
       <div class="report-card pos"><div class="label">Ingresos efectivo</div><div class="value">${money(ingEfectivo)}</div></div>
       <div class="report-card neg"><div class="label">Egresos efectivo</div><div class="value">${money(egEfectivo)}</div></div>
     </div>
-    <p class="hint">Efectivo en caja = fondo para vueltos + ingresos en efectivo − egresos en efectivo (el Yape se muestra aparte porque no es dinero físico).</p>
+    <p class="hint">Efectivo en caja = fondo para vueltos + ingresos en efectivo − egresos en efectivo, desde tu último corte hasta ahora.</p>
     <table>
       <thead><tr><th>Movimiento</th><th>Concepto</th><th>Método</th><th>Monto</th></tr></thead>
       <tbody>${filas}</tbody>
     </table>
   `;
+
+  const elHist = document.getElementById('caja-historial-cortes');
+  if (!cortes_.length) {
+    elHist.innerHTML = '<p class="empty-hist">Todavía no has hecho ningún corte de caja.</p>';
+  } else {
+    const filasCortes = [...cortes_].reverse().map(c => `
+      <tr>
+        <td>${new Date(c.timestamp).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td>${money(c.ingEfectivo)}</td>
+        <td>${money(c.egEfectivo)}</td>
+        <td><b>${money(c.saldoFinal)}</b></td>
+      </tr>
+    `).join('');
+    elHist.innerHTML = `
+      <table>
+        <thead><tr><th>Corte realizado</th><th>Ingresos efectivo</th><th>Egresos efectivo</th><th>Efectivo final</th></tr></thead>
+        <tbody>${filasCortes}</tbody>
+      </table>
+    `;
+  }
 }
 
 function openRoom(rm) {
@@ -1074,7 +1158,7 @@ function openRoom(rm) {
     document.getElementById('ci-dni').value = '';
     document.getElementById('ci-dni-hint').textContent = '';
     document.getElementById('ci-nombre').value = res ? res.nombre : '';
-    document.getElementById('ci-personas').value = 1;
+    document.getElementById('ci-noches').value = 1;
     document.getElementById('ci-precio').value = DEFAULT_PRICE[rm.type];
     let notasIniciales = '';
     if (res) {
@@ -1105,7 +1189,7 @@ function openRoom(rm) {
     const nights = calcNights(g.checkin);
     document.getElementById('co-summary').innerHTML = `
       <b>${g.nombre}</b>${g.dni ? ' · DNI ' + g.dni : ''}<br>
-      ${g.personas} persona(s)<br>
+      Noches contratadas: <b>${g.noches || 1}</b><br>
       Entrada: <b>${new Date(g.checkin).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</b><br>
       Noches transcurridas: <b>${nights}</b>
       ${g.pagoAlEntrar ? `<br><b>Ya pagó S/ ${g.montoPagado} al entrar (${g.tipoPago})</b>` : '<br><b>Pendiente de pago</b>'}
@@ -1129,6 +1213,54 @@ function calcNights(checkinIso, checkoutDate) {
   return nights;
 }
 
+const HORA_LIMITE_SALIDA = 12; // 12:00pm (mediodía), hora de salida normal del hospedaje
+const HORA_AVISO_ANTES = 11; // desde qué hora empieza el aviso previo (1 hora antes)
+
+function horaLimite(checkinIso, noches) {
+  const c = new Date(checkinIso);
+  return new Date(c.getFullYear(), c.getMonth(), c.getDate() + (noches || 1), HORA_LIMITE_SALIDA, 0, 0);
+}
+
+function formatDuracion(ms) {
+  const min = Math.round(Math.abs(ms) / 60000);
+  const h = Math.floor(min / 60), m = min % 60;
+  return (h > 0 ? h + 'h ' : '') + m + 'min';
+}
+
+function renderAlertas() {
+  const banner = document.getElementById('alertas-banner');
+  if (!banner) return;
+  const ahora = new Date();
+  const vencidos = [], proximos = [];
+
+  ROOMS.forEach(rm => {
+    const s = state[rm.num];
+    if (!s || s.status !== 'ocupado') return;
+    const limite = horaLimite(s.guest.checkin, s.guest.noches);
+    const card = document.querySelector(`.room-tag[data-room="${rm.num}"]`);
+    if (ahora >= limite) {
+      vencidos.push({ rm, g: s.guest, limite });
+      if (card) { card.classList.add('room-vencido'); card.classList.remove('room-proximo'); }
+    } else if (limite - ahora <= 60 * 60 * 1000) {
+      proximos.push({ rm, g: s.guest, limite });
+      if (card) { card.classList.add('room-proximo'); card.classList.remove('room-vencido'); }
+    } else if (card) {
+      card.classList.remove('room-vencido', 'room-proximo');
+    }
+  });
+
+  if (!vencidos.length && !proximos.length) {
+    banner.style.display = 'none';
+    banner.innerHTML = '';
+    return;
+  }
+  banner.style.display = 'block';
+  banner.innerHTML = [
+    ...vencidos.map(a => `<div class="alerta-item venc">⚠️ Cuarto ${a.rm.num} — ${a.g.nombre} — ya pasó su hora de salida (12:00pm) hace ${formatDuracion(ahora - a.limite)}</div>`),
+    ...proximos.map(a => `<div class="alerta-item prox">Cuarto ${a.rm.num} — ${a.g.nombre} — su hora de salida (12:00pm) es en ${formatDuracion(a.limite - ahora)}</div>`)
+  ].join('');
+}
+
 function closeModals() {
   document.querySelectorAll('.overlay').forEach(o => o.classList.remove('show'));
   pendingReservationIndex = null;
@@ -1149,9 +1281,13 @@ document.getElementById('co-salida').addEventListener('input', recomputeCheckout
 document.getElementById('ci-ya-pago').addEventListener('change', (e) => {
   document.getElementById('ci-pago-detalle').style.display = (e.target.value === 'si') ? '' : 'none';
 });
-document.getElementById('ci-precio').addEventListener('input', () => {
-  document.getElementById('ci-monto-pagado').value = document.getElementById('ci-precio').value;
-});
+function recomputeMontoPagado() {
+  const precio = parseFloat(document.getElementById('ci-precio').value) || 0;
+  const noches = parseInt(document.getElementById('ci-noches').value) || 1;
+  document.getElementById('ci-monto-pagado').value = (precio * noches).toFixed(2);
+}
+document.getElementById('ci-precio').addEventListener('input', recomputeMontoPagado);
+document.getElementById('ci-noches').addEventListener('input', recomputeMontoPagado);
 
 document.getElementById('ci-confirmar').addEventListener('click', async () => {
   const nombre = document.getElementById('ci-nombre').value.trim();
@@ -1167,7 +1303,7 @@ document.getElementById('ci-confirmar').addEventListener('click', async () => {
     guest: {
       nombre,
       dni: document.getElementById('ci-dni').value.trim(),
-      personas: parseInt(document.getElementById('ci-personas').value) || 1,
+      noches: parseInt(document.getElementById('ci-noches').value) || 1,
       precio: parseFloat(document.getElementById('ci-precio').value) || DEFAULT_PRICE[currentRoom.type],
       checkin: checkinIso,
       notas: document.getElementById('ci-notas').value.trim(),
@@ -1351,16 +1487,36 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-document.getElementById('cj-dia').addEventListener('change', renderCaja);
-
 document.getElementById('cj-guardar-fondo').addEventListener('click', async () => {
-  const dia = document.getElementById('cj-dia').value || todayLocalStr();
   const monto = parseFloat(document.getElementById('cj-fondo').value) || 0;
-  fondosCaja[dia] = monto;
+  fondosCaja['actual'] = monto;
+  if (cortes_.length) cortes_[cortes_.length - 1].fondoSiguiente = monto;
   const btn = document.getElementById('cj-guardar-fondo');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
-  await saveFondos();
+  await Promise.all([saveFondos(), saveCortes()]);
+  btn.disabled = false; btn.textContent = original;
+  renderCaja();
+});
+
+document.getElementById('cj-hacer-corte').addEventListener('click', async () => {
+  const desde = inicioDelPeriodoActual();
+  const fondo = Number(document.getElementById('cj-fondo').value) || 0;
+  const { ingEfectivo, ingYape, egEfectivo, egYape } = calcularPeriodo(desde, new Date());
+  const saldoFinal = fondo + ingEfectivo - egEfectivo;
+  if (!confirm(`¿Confirmar corte de caja?\n\nEfectivo final: ${money(saldoFinal)}\nYape del turno: ${money(ingYape - egYape)}\n\nEsto cierra el turno actual y empieza uno nuevo.`)) return;
+
+  const btn = document.getElementById('cj-hacer-corte');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Cerrando turno...';
+  cortes_.push({
+    timestamp: new Date().toISOString(),
+    ingEfectivo, ingYape, egEfectivo, egYape,
+    fondoUsado: fondo,
+    saldoFinal,
+    fondoSiguiente: fondo
+  });
+  await saveCortes();
   btn.disabled = false; btn.textContent = original;
   renderCaja();
 });
@@ -1526,6 +1682,7 @@ async function enterApp() {
   applyRoleUI();
   await loadState();
   render();
+  setInterval(renderAlertas, 60000);
 }
 
 document.getElementById('set-guardar-pass').addEventListener('click', async () => {
