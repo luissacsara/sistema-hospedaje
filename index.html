@@ -63,6 +63,7 @@
   .dot{width:8px;height:8px;border-radius:50%;background:currentColor;}
 
   .gear-btn{
+    position:relative;
     background:var(--card-bg);
     border:1.5px solid var(--tag-border);
     width:42px;height:42px;border-radius:12px;
@@ -72,6 +73,8 @@
   }
   .gear-btn:hover{border-color:var(--ink-soft);transform:rotate(20deg);}
   .gear-btn svg{width:20px;height:20px;stroke:var(--ink);}
+  .gear-btn.tienda-top-btn:hover{transform:translateY(-2px);}
+  .header-actions{display:flex;gap:10px;flex-shrink:0;}
 
   .floor{margin-bottom:34px;}
   .floor-label{
@@ -193,6 +196,43 @@
   .chart-legend-list{list-style:none;padding:0;margin:14px 0 0;font-size:13px;line-height:1.9;color:var(--ink-soft);}
   .chart-legend-list b{color:var(--ink);font-family:'IBM Plex Mono',monospace;}
 
+  .tienda-header{
+    display:flex;align-items:center;justify-content:space-between;gap:14px;
+    margin-bottom:18px;
+  }
+  .tienda-header .tienda-titulo{display:flex;align-items:center;gap:12px;}
+  .tienda-titulo-icon{
+    width:44px;height:44px;border-radius:12px;background:var(--ocupado-bg);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .tienda-titulo-icon svg{width:24px;height:24px;stroke:var(--ocupado);}
+  .tienda-titulo h2{font-family:'Fraunces',serif;font-size:20px;margin:0;}
+  .tienda-titulo p{margin:2px 0 0;color:var(--ink-soft);font-size:12.5px;}
+  .cart-btn{
+    position:relative;background:var(--card-bg);border:1.5px solid var(--tag-border);
+    width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;flex-shrink:0;transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+    box-shadow:var(--shadow);
+  }
+  .cart-btn:hover{border-color:var(--ink-soft);transform:translateY(-1px);}
+  .cart-btn svg{width:23px;height:23px;stroke:var(--ink);}
+  .cart-btn.has-items{border-color:var(--ocupado);}
+  .cart-badge{
+    position:absolute;top:-7px;right:-7px;min-width:20px;height:20px;padding:0 5px;
+    background:var(--danger);color:#fff;border-radius:20px;
+    font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    border:2px solid var(--bg);transform:scale(0);transition:transform .18s ease;
+  }
+  .cart-badge.show{transform:scale(1);}
+  .cart-btn.bounce{animation:cartBounce .45s ease;}
+  @keyframes cartBounce{
+    0%{transform:scale(1) rotate(0);}
+    30%{transform:scale(1.18) rotate(-8deg);}
+    55%{transform:scale(0.94) rotate(6deg);}
+    80%{transform:scale(1.05) rotate(-2deg);}
+    100%{transform:scale(1) rotate(0);}
+  }
   .tienda-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
   .prod-btn{
     background:var(--card-bg);border:1.5px solid var(--tag-border);border-radius:12px;
@@ -329,9 +369,15 @@
         <button class="logout-link" id="btn-logout">Cerrar sesión</button>
       </div>
     </div>
-    <button class="gear-btn" id="btn-settings" title="Configuración">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-    </button>
+    <div class="header-actions">
+      <button class="gear-btn tienda-top-btn" id="btn-tienda-top" title="Ir a la tienda">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span class="cart-badge" id="cart-badge-top">0</span>
+      </button>
+      <button class="gear-btn" id="btn-settings" title="Configuración">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      </button>
+    </div>
   </header>
 
   <div id="alertas-banner" style="display:none;"></div>
@@ -402,6 +448,21 @@
 
   <div class="tab-panel" id="panel-tienda">
     <div id="tienda-content">
+      <div class="tienda-header">
+        <div class="tienda-titulo">
+          <div class="tienda-titulo-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          </div>
+          <div>
+            <h2>Tienda</h2>
+            <p>Snacks y bebidas, aparte del hospedaje</p>
+          </div>
+        </div>
+        <button class="cart-btn" id="cart-icon-btn" title="Ver carrito">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          <span class="cart-badge" id="cart-badge">0</span>
+        </button>
+      </div>
       <div class="report-grid" id="tienda-resumen"></div>
 
       <div class="row2" data-admin-only style="margin-top:4px;">
@@ -416,26 +477,6 @@
       <div class="tienda-grid" id="tienda-grid"></div>
 
       <div id="tienda-vacio" class="empty-hist" style="display:none;">Todavía no tienes productos. Agrega uno abajo.</div>
-
-      <div id="tienda-carrito-box" style="display:none;">
-        <p class="sub" style="margin:18px 0 8px;">Carrito</p>
-        <div id="tienda-carrito"></div>
-        <div class="row2" style="margin-top:10px;">
-          <div class="field">
-            <label>Método de pago</label>
-            <select id="tn-metodo">
-              <option value="Efectivo">Efectivo</option>
-              <option value="Yape">Yape</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Total</label>
-            <input type="text" id="tn-total" disabled>
-          </div>
-        </div>
-        <button class="btn btn-primary" id="tn-registrar-venta" style="margin-bottom:10px;">Registrar venta</button>
-        <button class="btn btn-secondary" id="tn-vaciar-carrito" style="margin-bottom:16px;">Vaciar carrito</button>
-      </div>
 
       <div style="height:1px;background:var(--tag-border);margin:20px 0;"></div>
 
@@ -669,6 +710,36 @@
     </div>
     <p class="hint" id="set-pass-hint">Ambas contraseñas dan acceso al sistema; la de administrador además desbloquea esta Configuración y "Cancelar registro sin cobro".</p>
     <button class="btn btn-primary" id="set-guardar-pass">Guardar contraseñas</button>
+  </div>
+</div>
+
+<!-- MODAL CARRITO -->
+<div class="overlay" id="overlay-carrito">
+  <div class="modal modal-wrap">
+    <button class="modal-close" data-close>&times;</button>
+    <h2>Carrito</h2>
+    <p class="sub" id="carrito-modal-sub">Tu carrito está vacío</p>
+
+    <div id="carrito-modal-vacio" class="empty-hist" style="display:none;">Todavía no agregaste productos. Ciérra esta ventana y toca un producto en la Tienda.</div>
+
+    <div id="carrito-modal-body" style="display:none;">
+      <div id="tienda-carrito"></div>
+      <div class="row2" style="margin-top:10px;">
+        <div class="field">
+          <label>Método de pago</label>
+          <select id="tn-metodo">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Yape">Yape</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Total</label>
+          <input type="text" id="tn-total" disabled>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="tn-registrar-venta" style="margin-bottom:10px;">Registrar venta</button>
+      <button class="btn btn-secondary" id="tn-vaciar-carrito" style="margin-bottom:6px;">Vaciar carrito</button>
+    </div>
   </div>
 </div>
 
@@ -1275,6 +1346,7 @@ function agregarAlCarrito(id) {
   if (item) item.cantidad += 1;
   else carrito_.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 });
   renderCarrito();
+  bounceCartIcon();
 }
 
 function cambiarCantidad(id, delta) {
@@ -1291,14 +1363,21 @@ function cambiarCantidad(id, delta) {
 }
 
 function renderCarrito() {
-  const box = document.getElementById('tienda-carrito-box');
+  updateCartBadge();
   const cont = document.getElementById('tienda-carrito');
-  if (!box) return;
+  const vacio = document.getElementById('carrito-modal-vacio');
+  const body = document.getElementById('carrito-modal-body');
+  const sub = document.getElementById('carrito-modal-sub');
+  if (!cont) return;
+  const totalItems = carrito_.reduce((s,i) => s + i.cantidad, 0);
   if (!carrito_.length) {
-    box.style.display = 'none';
+    vacio.style.display = 'block';
+    body.style.display = 'none';
+    sub.textContent = 'Tu carrito está vacío';
     return;
   }
-  box.style.display = 'block';
+  vacio.style.display = 'none';
+  body.style.display = 'block';
   let total = 0;
   cont.innerHTML = carrito_.map(i => {
     const subtotal = i.precio * i.cantidad;
@@ -1316,6 +1395,32 @@ function renderCarrito() {
     `;
   }).join('');
   document.getElementById('tn-total').value = money(total);
+  sub.textContent = `${totalItems} producto(s) · ${money(total)}`;
+}
+
+function updateCartBadge() {
+  const totalItems = carrito_.reduce((s,i) => s + i.cantidad, 0);
+  const badge = document.getElementById('cart-badge');
+  const btn = document.getElementById('cart-icon-btn');
+  if (badge && btn) {
+    badge.textContent = totalItems;
+    badge.classList.toggle('show', totalItems > 0);
+    btn.classList.toggle('has-items', totalItems > 0);
+  }
+  const badgeTop = document.getElementById('cart-badge-top');
+  if (badgeTop) {
+    badgeTop.textContent = totalItems;
+    badgeTop.classList.toggle('show', totalItems > 0);
+  }
+}
+
+function bounceCartIcon() {
+  [document.getElementById('cart-icon-btn'), document.getElementById('btn-tienda-top')].forEach(btn => {
+    if (!btn) return;
+    btn.classList.remove('bounce');
+    void btn.offsetWidth; // reinicia la animación aunque se agregue rápido
+    btn.classList.add('bounce');
+  });
 }
 
 function renderCaja() {
@@ -1730,6 +1835,10 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+document.getElementById('btn-tienda-top').addEventListener('click', () => {
+  abrirCarritoModal();
+});
+
 document.getElementById('cj-guardar-fondo').addEventListener('click', async () => {
   const monto = parseFloat(document.getElementById('cj-fondo').value) || 0;
   fondosCaja['actual'] = monto;
@@ -1808,6 +1917,15 @@ document.getElementById('tn-vaciar-carrito').addEventListener('click', () => {
   renderCarrito();
 });
 
+document.getElementById('cart-icon-btn').addEventListener('click', () => {
+  abrirCarritoModal();
+});
+
+function abrirCarritoModal() {
+  renderCarrito();
+  document.getElementById('overlay-carrito').classList.add('show');
+}
+
 document.getElementById('tn-registrar-venta').addEventListener('click', async () => {
   if (!carrito_.length) return;
   const total = carrito_.reduce((s,i) => s + i.precio * i.cantidad, 0);
@@ -1841,6 +1959,7 @@ document.getElementById('tn-registrar-venta').addEventListener('click', async ()
   btn.disabled = false; btn.textContent = original;
   carrito_ = [];
   renderTienda();
+  document.getElementById('overlay-carrito').classList.remove('show');
   alert(`Venta registrada: ${money(total)} (ganancia: ${money(ganancia)})`);
 });
 
