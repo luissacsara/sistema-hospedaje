@@ -202,6 +202,10 @@
   .prod-btn:hover{transform:translateY(-2px);}
   .prod-btn .p-nombre{font-weight:600;font-size:13.5px;margin-bottom:4px;}
   .prod-btn .p-precio{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);}
+  .prod-btn .p-stock{font-size:11px;margin-top:4px;color:var(--libre);font-weight:600;}
+  .prod-btn .p-stock.bajo{color:var(--ocupado);}
+  .prod-btn.sin-stock{opacity:0.5;cursor:not-allowed;}
+  .prod-btn.sin-stock .p-stock{color:var(--danger);}
   .carrito-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--tag-border);font-size:13.5px;}
   .carrito-row .c-qty{display:flex;align-items:center;gap:8px;}
   .carrito-row .c-qty button{
@@ -398,7 +402,17 @@
 
   <div class="tab-panel" id="panel-tienda">
     <div id="tienda-content">
-      <p class="hint" style="margin-bottom:10px;">Toca un producto para agregarlo al carrito.</p>
+      <div class="report-grid" id="tienda-resumen"></div>
+
+      <div class="row2" data-admin-only style="margin-top:4px;">
+        <div class="field">
+          <label>Fondo actual de la tienda (S/)</label>
+          <input type="number" id="tn-fondo" min="0" step="1">
+        </div>
+      </div>
+      <button class="btn btn-secondary" id="tn-guardar-fondo" data-admin-only style="margin-bottom:18px;">Guardar fondo</button>
+
+      <p class="sub" style="margin-bottom:10px;">Registrar venta — toca un producto para agregarlo</p>
       <div class="tienda-grid" id="tienda-grid"></div>
 
       <div id="tienda-vacio" class="empty-hist" style="display:none;">Todavía no tienes productos. Agrega uno abajo.</div>
@@ -425,6 +439,11 @@
 
       <div style="height:1px;background:var(--tag-border);margin:20px 0;"></div>
 
+      <p class="sub" data-admin-only style="margin-bottom:14px;">Ventas recientes de la tienda</p>
+      <div id="tienda-ventas-recientes" data-admin-only></div>
+
+      <div style="height:1px;background:var(--tag-border);margin:20px 0;" data-admin-only></div>
+
       <p class="sub" data-admin-only style="margin-bottom:14px;">Agregar producto nuevo</p>
       <div class="row2" data-admin-only>
         <div class="field">
@@ -432,8 +451,18 @@
           <input type="text" id="tn-prod-nombre" placeholder="Ej: Agua, Galletas, Gaseosa...">
         </div>
         <div class="field">
-          <label>Precio (S/)</label>
+          <label>Precio de venta (S/)</label>
           <input type="number" id="tn-prod-precio" min="0" step="0.5">
+        </div>
+      </div>
+      <div class="row2" data-admin-only>
+        <div class="field">
+          <label>Costo de compra (S/, opcional)</label>
+          <input type="number" id="tn-prod-costo" min="0" step="0.5" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Stock inicial (unidades)</label>
+          <input type="number" id="tn-prod-stock" min="0" step="1" placeholder="0">
         </div>
       </div>
       <button class="btn btn-secondary" id="tn-agregar-producto" data-admin-only style="margin-bottom:16px;">Agregar producto</button>
@@ -667,6 +696,8 @@ let fondosCaja = {};
 let cortes_ = [];
 let productos_ = [];
 let carrito_ = [];
+let ventasTienda_ = [];
+let fondoTienda = 0;
 let currentRoom = null;
 let currentRole = null;
 let pendingReservationIndex = null;
@@ -704,7 +735,7 @@ async function kvSet(key, value) {
 }
 
 async function loadState() {
-  const [r, h, g, rs, cj, fc, ct, pr] = await Promise.all([
+  const [r, h, g, rs, cj, fc, ct, pr, vt, ft] = await Promise.all([
     kvGet('rooms-state'),
     kvGet('history-log'),
     kvGet('expenses-log'),
@@ -712,7 +743,9 @@ async function loadState() {
     kvGet('caja-log'),
     kvGet('caja-fondos'),
     kvGet('caja-cortes'),
-    kvGet('tienda-productos')
+    kvGet('tienda-productos'),
+    kvGet('tienda-ventas'),
+    kvGet('tienda-fondo')
   ]);
   try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
@@ -725,10 +758,20 @@ async function loadState() {
   try { fondosCaja = fc ? JSON.parse(fc) : {}; } catch { fondosCaja = {}; }
   try { cortes_ = ct ? JSON.parse(ct) : []; } catch { cortes_ = []; }
   try { productos_ = pr ? JSON.parse(pr) : []; } catch { productos_ = []; }
+  try { ventasTienda_ = vt ? JSON.parse(vt) : []; } catch { ventasTienda_ = []; }
+  fondoTienda = Number(ft) || 0;
 }
 
 async function saveProductos() {
   await kvSet('tienda-productos', JSON.stringify(productos_));
+}
+
+async function saveVentasTienda() {
+  await kvSet('tienda-ventas', JSON.stringify(ventasTienda_));
+}
+
+async function saveFondoTienda() {
+  await kvSet('tienda-fondo', String(fondoTienda));
 }
 
 async function saveCortes() {
@@ -1152,17 +1195,40 @@ function renderTienda() {
   const vacio = document.getElementById('tienda-vacio');
   if (!grid) return;
 
+  // Resumen: ganancia de hoy, ventas de hoy, fondo actual, stock bajo
+  const hoy = todayLocalStr();
+  const ventasHoy = ventasTienda_.filter(v => v.fecha === hoy);
+  const gananciaHoy = ventasHoy.reduce((s,v) => s + Number(v.ganancia), 0);
+  const totalHoy = ventasHoy.reduce((s,v) => s + Number(v.total), 0);
+  const stockBajo = productos_.filter(p => p.stock != null && p.stock <= 3).length;
+
+  const elResumen = document.getElementById('tienda-resumen');
+  if (elResumen) {
+    elResumen.innerHTML = `
+      <div class="report-card pos"><div class="label">Ganancia de hoy</div><div class="value">${money(gananciaHoy)}</div></div>
+      <div class="report-card"><div class="label">Vendido hoy</div><div class="value">${money(totalHoy)}</div></div>
+      <div class="report-card"><div class="label">Fondo de la tienda</div><div class="value">${money(fondoTienda)}</div></div>
+      <div class="report-card ${stockBajo ? 'neg' : ''}"><div class="label">Productos con poco stock</div><div class="value">${stockBajo}</div></div>
+    `;
+  }
+  document.getElementById('tn-fondo').value = fondoTienda || '';
+
   if (!productos_.length) {
     grid.innerHTML = '';
     vacio.style.display = 'block';
   } else {
     vacio.style.display = 'none';
-    grid.innerHTML = productos_.map(p => `
-      <div class="prod-btn" onclick="agregarAlCarrito('${p.id}')">
-        <div class="p-nombre">${p.nombre}</div>
-        <div class="p-precio">${money(p.precio)}</div>
-      </div>
-    `).join('');
+    grid.innerHTML = productos_.map(p => {
+      const sinStock = p.stock != null && p.stock <= 0;
+      const stockTxt = p.stock != null ? `<div class="p-stock ${p.stock <= 3 ? 'bajo' : ''}">${sinStock ? 'Sin stock' : p.stock + ' en stock'}</div>` : '';
+      return `
+        <div class="prod-btn ${sinStock ? 'sin-stock' : ''}" onclick="${sinStock ? '' : `agregarAlCarrito('${p.id}')`}">
+          <div class="p-nombre">${p.nombre}</div>
+          <div class="p-precio">${money(p.precio)}</div>
+          ${stockTxt}
+        </div>
+      `;
+    }).join('');
   }
 
   renderCarrito();
@@ -1171,10 +1237,29 @@ function renderTienda() {
   if (listaAdmin) {
     listaAdmin.innerHTML = productos_.length ? productos_.map(p => `
       <div class="prod-item-row">
-        <span>${p.nombre} · ${money(p.precio)}</span>
+        <span>${p.nombre} · venta ${money(p.precio)}${p.costo ? ' · costo ' + money(p.costo) : ''}${p.stock != null ? ' · stock ' + p.stock : ''}</span>
         <button class="icon-btn" onclick="eliminarProducto('${p.id}')">Eliminar</button>
       </div>
     `).join('') : '<p class="empty-hist">No has agregado productos todavía.</p>';
+  }
+
+  const elVentas = document.getElementById('tienda-ventas-recientes');
+  if (elVentas) {
+    const recientes = [...ventasTienda_].reverse().slice(0, 15);
+    elVentas.innerHTML = recientes.length ? `
+      <table>
+        <thead><tr><th>Fecha</th><th>Concepto</th><th>Método</th><th>Total</th><th>Ganancia</th></tr></thead>
+        <tbody>${recientes.map(v => `
+          <tr>
+            <td>${new Date(v.fecha+'T'+(v.hora||'00:00')).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
+            <td>${v.concepto}</td>
+            <td>${v.metodo}</td>
+            <td>${money(v.total)}</td>
+            <td style="color:var(--libre);font-weight:600;">${money(v.ganancia)}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    ` : '<p class="empty-hist">Todavía no hay ventas registradas.</p>';
   }
 }
 
@@ -1182,6 +1267,11 @@ function agregarAlCarrito(id) {
   const prod = productos_.find(p => p.id === id);
   if (!prod) return;
   const item = carrito_.find(i => i.id === id);
+  const enCarrito = item ? item.cantidad : 0;
+  if (prod.stock != null && enCarrito + 1 > prod.stock) {
+    alert(`Solo quedan ${prod.stock} unidad(es) de ${prod.nombre}.`);
+    return;
+  }
   if (item) item.cantidad += 1;
   else carrito_.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 });
   renderCarrito();
@@ -1190,6 +1280,11 @@ function agregarAlCarrito(id) {
 function cambiarCantidad(id, delta) {
   const item = carrito_.find(i => i.id === id);
   if (!item) return;
+  const prod = productos_.find(p => p.id === id);
+  if (delta > 0 && prod && prod.stock != null && item.cantidad + 1 > prod.stock) {
+    alert(`Solo quedan ${prod.stock} unidad(es) de ${prod.nombre}.`);
+    return;
+  }
   item.cantidad += delta;
   if (item.cantidad <= 0) carrito_ = carrito_.filter(i => i.id !== id);
   renderCarrito();
@@ -1674,8 +1769,11 @@ document.getElementById('rp-mes').addEventListener('change', renderReporte);
 document.getElementById('tn-agregar-producto').addEventListener('click', async () => {
   const nombre = document.getElementById('tn-prod-nombre').value.trim();
   const precio = parseFloat(document.getElementById('tn-prod-precio').value);
+  const costo = parseFloat(document.getElementById('tn-prod-costo').value) || 0;
+  const stockVal = document.getElementById('tn-prod-stock').value;
+  const stock = stockVal !== '' ? (parseInt(stockVal) || 0) : null;
   if (!nombre || !precio) { alert('Completa el nombre y el precio del producto.'); return; }
-  productos_.push({ id: 'p' + Date.now(), nombre, precio });
+  productos_.push({ id: 'p' + Date.now(), nombre, precio, costo, stock });
   const btn = document.getElementById('tn-agregar-producto');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
@@ -1683,6 +1781,18 @@ document.getElementById('tn-agregar-producto').addEventListener('click', async (
   btn.disabled = false; btn.textContent = original;
   document.getElementById('tn-prod-nombre').value = '';
   document.getElementById('tn-prod-precio').value = '';
+  document.getElementById('tn-prod-costo').value = '';
+  document.getElementById('tn-prod-stock').value = '';
+  renderTienda();
+});
+
+document.getElementById('tn-guardar-fondo').addEventListener('click', async () => {
+  fondoTienda = parseFloat(document.getElementById('tn-fondo').value) || 0;
+  const btn = document.getElementById('tn-guardar-fondo');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  await saveFondoTienda();
+  btn.disabled = false; btn.textContent = original;
   renderTienda();
 });
 
@@ -1701,26 +1811,37 @@ document.getElementById('tn-vaciar-carrito').addEventListener('click', () => {
 document.getElementById('tn-registrar-venta').addEventListener('click', async () => {
   if (!carrito_.length) return;
   const total = carrito_.reduce((s,i) => s + i.precio * i.cantidad, 0);
+  const costoTotal = carrito_.reduce((s,i) => {
+    const prod = productos_.find(p => p.id === i.id);
+    return s + (prod && prod.costo ? prod.costo : 0) * i.cantidad;
+  }, 0);
+  const ganancia = total - costoTotal;
   const metodo = document.getElementById('tn-metodo').value;
-  const concepto = 'Tienda: ' + carrito_.map(i => `${i.nombre} x${i.cantidad}`).join(', ');
+  const concepto = carrito_.map(i => `${i.nombre} x${i.cantidad}`).join(', ');
   const ahora = new Date();
-  caja_.push({
+
+  ventasTienda_.push({
     id: 'venta-' + ahora.getTime(),
     fecha: dateOnlyLocal(ahora),
     hora: ahora.toTimeString().slice(0,5),
-    monto: total,
-    metodo,
-    concepto
+    total, costoTotal, ganancia, metodo, concepto
   });
+
+  carrito_.forEach(i => {
+    const prod = productos_.find(p => p.id === i.id);
+    if (prod && prod.stock != null) prod.stock = Math.max(0, prod.stock - i.cantidad);
+  });
+
+  if (metodo === 'Efectivo') fondoTienda += total;
+
   const btn = document.getElementById('tn-registrar-venta');
   const original = btn.textContent;
   btn.disabled = true; btn.textContent = 'Guardando...';
-  await saveCaja();
+  await Promise.all([saveVentasTienda(), saveProductos(), saveFondoTienda()]);
   btn.disabled = false; btn.textContent = original;
   carrito_ = [];
-  renderCarrito();
-  renderCaja();
-  alert(`Venta registrada: ${money(total)}`);
+  renderTienda();
+  alert(`Venta registrada: ${money(total)} (ganancia: ${money(ganancia)})`);
 });
 
 document.getElementById('gs-agregar').addEventListener('click', async () => {
