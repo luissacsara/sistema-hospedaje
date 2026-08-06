@@ -192,6 +192,23 @@
   .chart-box{background:var(--card-bg);border:1.5px solid var(--tag-border);border-radius:14px;padding:16px;box-shadow:var(--shadow);}
   .chart-legend-list{list-style:none;padding:0;margin:14px 0 0;font-size:13px;line-height:1.9;color:var(--ink-soft);}
   .chart-legend-list b{color:var(--ink);font-family:'IBM Plex Mono',monospace;}
+
+  .tienda-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px;}
+  .prod-btn{
+    background:var(--card-bg);border:1.5px solid var(--tag-border);border-radius:12px;
+    padding:14px 10px;text-align:center;cursor:pointer;box-shadow:var(--shadow);
+    transition:transform .12s ease;
+  }
+  .prod-btn:hover{transform:translateY(-2px);}
+  .prod-btn .p-nombre{font-weight:600;font-size:13.5px;margin-bottom:4px;}
+  .prod-btn .p-precio{font-family:'IBM Plex Mono',monospace;font-size:13px;color:var(--ink-soft);}
+  .carrito-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--tag-border);font-size:13.5px;}
+  .carrito-row .c-qty{display:flex;align-items:center;gap:8px;}
+  .carrito-row .c-qty button{
+    width:24px;height:24px;border-radius:6px;border:1.5px solid var(--tag-border);background:var(--card-bg);
+    cursor:pointer;font-weight:700;line-height:1;
+  }
+  .prod-item-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--tag-border);font-size:13.5px;}
   table{width:100%;border-collapse:collapse;margin-top:10px;background:var(--card-bg);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);}
   th,td{padding:10px 12px;text-align:left;font-size:13px;border-bottom:1px solid var(--tag-border);}
   th{font-family:'IBM Plex Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);background:rgba(0,0,0,0.02);}
@@ -206,17 +223,6 @@
   .report-card.neg .value{color:var(--danger);}
   .row-actions{display:flex;justify-content:flex-end;margin-top:6px;}
   .icon-btn{background:none;border:none;color:var(--danger);cursor:pointer;font-size:12.5px;text-decoration:underline;}
-  .icon-btn.pos{color:var(--libre);}
-
-  .stock-badge{
-    font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;
-    padding:2px 8px;border-radius:20px;display:inline-block;
-  }
-  .stock-badge.ok{background:var(--libre-bg);color:var(--libre);}
-  .stock-badge.bajo{background:var(--ocupado-bg);color:var(--ocupado);}
-  .stock-badge.agotado{background:#F6E4DF;color:var(--danger);}
-
-  .inline-num{width:70px;padding:6px 8px;border:1.5px solid var(--tag-border);border-radius:8px;font-family:'Inter';font-size:13px;}
 
   /* Modal */
   .overlay{
@@ -338,7 +344,7 @@
   <div class="tabs-bar">
     <button class="tab-btn active" data-tab="reservas">Reservas</button>
     <button class="tab-btn" data-tab="historial">Historial</button>
-    <button class="tab-btn" data-tab="tienda">Tiendita</button>
+    <button class="tab-btn" data-tab="tienda">Tienda</button>
     <button class="tab-btn" data-tab="gastos" data-admin-only>Gastos</button>
     <button class="tab-btn" data-tab="caja" data-admin-only>Flujo de caja</button>
     <button class="tab-btn" data-tab="reporte" data-admin-only>Reporte mensual</button>
@@ -392,64 +398,46 @@
 
   <div class="tab-panel" id="panel-tienda">
     <div id="tienda-content">
-      <p class="hint" style="margin-bottom:12px;">Ventas de la tiendita (snacks, bebidas, etc.). El dinero de estas ventas se lleva aparte del flujo de caja de las habitaciones.</p>
+      <p class="hint" style="margin-bottom:10px;">Toca un producto para agregarlo al carrito.</p>
+      <div class="tienda-grid" id="tienda-grid"></div>
 
-      <div class="row2">
-        <div class="field">
-          <label>Producto</label>
-          <select id="tv-producto"></select>
-        </div>
-        <div class="field" style="max-width:110px;">
-          <label>Cantidad</label>
-          <input type="number" id="tv-cantidad" min="1" value="1">
-        </div>
-      </div>
-      <div class="row2">
-        <div class="field" style="max-width:220px;">
-          <label>Método de pago</label>
-          <select id="tv-metodo">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Yape">Yape</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Total</label>
-          <input type="text" id="tv-total" disabled>
-        </div>
-      </div>
-      <p class="hint" id="tv-stock-hint"></p>
-      <button class="btn btn-primary" id="tv-vender" style="margin-bottom:20px;">Registrar venta</button>
+      <div id="tienda-vacio" class="empty-hist" style="display:none;">Todavía no tienes productos. Agrega uno abajo.</div>
 
-      <div class="report-grid" id="tienda-resumen"></div>
-
-      <div data-admin-only>
-        <p class="history-toggle" id="tp-toggle-inv"><span>Inventario y precios</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
-        </p>
-        <div class="history-wrap" id="tp-wrap-inv">
-          <div class="row2">
-            <div class="field">
-              <label>Nombre del producto</label>
-              <input type="text" id="tp-nombre" placeholder="Ej: Agua 625ml">
-            </div>
-            <div class="field" style="max-width:120px;">
-              <label>Precio (S/)</label>
-              <input type="number" id="tp-precio" min="0" step="0.1">
-            </div>
-            <div class="field" style="max-width:120px;">
-              <label>Stock inicial</label>
-              <input type="number" id="tp-stock" min="0" step="1" value="0">
-            </div>
+      <div id="tienda-carrito-box" style="display:none;">
+        <p class="sub" style="margin:18px 0 8px;">Carrito</p>
+        <div id="tienda-carrito"></div>
+        <div class="row2" style="margin-top:10px;">
+          <div class="field">
+            <label>Método de pago</label>
+            <select id="tn-metodo">
+              <option value="Efectivo">Efectivo</option>
+              <option value="Yape">Yape</option>
+            </select>
           </div>
-          <button class="btn btn-secondary" id="tp-agregar" style="margin-bottom:16px;">Añadir producto</button>
-          <div id="tienda-productos-tabla"></div>
+          <div class="field">
+            <label>Total</label>
+            <input type="text" id="tn-total" disabled>
+          </div>
         </div>
+        <button class="btn btn-primary" id="tn-registrar-venta" style="margin-bottom:10px;">Registrar venta</button>
+        <button class="btn btn-secondary" id="tn-vaciar-carrito" style="margin-bottom:16px;">Vaciar carrito</button>
       </div>
 
-      <div data-admin-only style="margin-top:22px;">
-        <p class="hint" style="margin-bottom:0;">Historial de ventas de la tiendita</p>
-        <div id="tienda-ventas-tabla"></div>
+      <div style="height:1px;background:var(--tag-border);margin:20px 0;"></div>
+
+      <p class="sub" data-admin-only style="margin-bottom:14px;">Agregar producto nuevo</p>
+      <div class="row2" data-admin-only>
+        <div class="field">
+          <label>Nombre del producto</label>
+          <input type="text" id="tn-prod-nombre" placeholder="Ej: Agua, Galletas, Gaseosa...">
+        </div>
+        <div class="field">
+          <label>Precio (S/)</label>
+          <input type="number" id="tn-prod-precio" min="0" step="0.5">
+        </div>
       </div>
+      <button class="btn btn-secondary" id="tn-agregar-producto" data-admin-only style="margin-bottom:16px;">Agregar producto</button>
+      <div id="tienda-lista-productos" data-admin-only></div>
     </div>
   </div>
 
@@ -678,7 +666,7 @@ let caja_ = [];
 let fondosCaja = {};
 let cortes_ = [];
 let productos_ = [];
-let ventasTienda_ = [];
+let carrito_ = [];
 let currentRoom = null;
 let currentRole = null;
 let pendingReservationIndex = null;
@@ -716,7 +704,7 @@ async function kvSet(key, value) {
 }
 
 async function loadState() {
-  const [r, h, g, rs, cj, fc, ct, tp, tv] = await Promise.all([
+  const [r, h, g, rs, cj, fc, ct, pr] = await Promise.all([
     kvGet('rooms-state'),
     kvGet('history-log'),
     kvGet('expenses-log'),
@@ -724,8 +712,7 @@ async function loadState() {
     kvGet('caja-log'),
     kvGet('caja-fondos'),
     kvGet('caja-cortes'),
-    kvGet('tienda-productos'),
-    kvGet('tienda-ventas')
+    kvGet('tienda-productos')
   ]);
   try { state = r ? JSON.parse(r) : {}; } catch { state = {}; }
   ROOMS.forEach(rm => {
@@ -737,8 +724,11 @@ async function loadState() {
   try { caja_ = cj ? JSON.parse(cj) : []; } catch { caja_ = []; }
   try { fondosCaja = fc ? JSON.parse(fc) : {}; } catch { fondosCaja = {}; }
   try { cortes_ = ct ? JSON.parse(ct) : []; } catch { cortes_ = []; }
-  try { productos_ = tp ? JSON.parse(tp) : []; } catch { productos_ = []; }
-  try { ventasTienda_ = tv ? JSON.parse(tv) : []; } catch { ventasTienda_ = []; }
+  try { productos_ = pr ? JSON.parse(pr) : []; } catch { productos_ = []; }
+}
+
+async function saveProductos() {
+  await kvSet('tienda-productos', JSON.stringify(productos_));
 }
 
 async function saveCortes() {
@@ -764,12 +754,6 @@ async function saveCaja() {
 }
 async function saveFondos() {
   await kvSet('caja-fondos', JSON.stringify(fondosCaja));
-}
-async function saveProductos() {
-  await kvSet('tienda-productos', JSON.stringify(productos_));
-}
-async function saveVentasTienda() {
-  await kvSet('tienda-ventas', JSON.stringify(ventasTienda_));
 }
 
 function money(n){ return 'S/ ' + Number(n).toFixed(2); }
@@ -1139,7 +1123,7 @@ function renderReporte() {
       <div class="report-card neg"><div class="label">Gastos</div><div class="value">${money(totalGastos)}</div></div>
       <div class="report-card ${neto >= 0 ? 'pos' : 'neg'}"><div class="label">Neto</div><div class="value">${money(neto)}</div></div>
     </div>
-    <p class="hint">${ingresosMes.length} cobro(s) recibido(s) y ${gastosMes.length} gasto(s) en este mes. Los ingresos se cuentan en el mes en que realmente se cobraron (entrada o salida), no en el mes del check-out. Esto no incluye las ventas de la tiendita, que se llevan aparte.</p>
+    <p class="hint">${ingresosMes.length} cobro(s) recibido(s) y ${gastosMes.length} gasto(s) en este mes. Los ingresos se cuentan en el mes en que realmente se cobraron (entrada o salida), no en el mes del check-out.</p>
   `;
 }
 
@@ -1161,6 +1145,82 @@ function calcularPeriodo(desde, hasta) {
   const egEfectivo = gastosP.filter(g => (g.metodo || 'Efectivo') === 'Efectivo').reduce((s,g) => s + Number(g.monto), 0);
   const egYape = gastosP.filter(g => (g.metodo || 'Efectivo') === 'Yape').reduce((s,g) => s + Number(g.monto), 0);
   return { ingresosP, gastosP, ingEfectivo, ingYape, egEfectivo, egYape };
+}
+
+function renderTienda() {
+  const grid = document.getElementById('tienda-grid');
+  const vacio = document.getElementById('tienda-vacio');
+  if (!grid) return;
+
+  if (!productos_.length) {
+    grid.innerHTML = '';
+    vacio.style.display = 'block';
+  } else {
+    vacio.style.display = 'none';
+    grid.innerHTML = productos_.map(p => `
+      <div class="prod-btn" onclick="agregarAlCarrito('${p.id}')">
+        <div class="p-nombre">${p.nombre}</div>
+        <div class="p-precio">${money(p.precio)}</div>
+      </div>
+    `).join('');
+  }
+
+  renderCarrito();
+
+  const listaAdmin = document.getElementById('tienda-lista-productos');
+  if (listaAdmin) {
+    listaAdmin.innerHTML = productos_.length ? productos_.map(p => `
+      <div class="prod-item-row">
+        <span>${p.nombre} · ${money(p.precio)}</span>
+        <button class="icon-btn" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+      </div>
+    `).join('') : '<p class="empty-hist">No has agregado productos todavía.</p>';
+  }
+}
+
+function agregarAlCarrito(id) {
+  const prod = productos_.find(p => p.id === id);
+  if (!prod) return;
+  const item = carrito_.find(i => i.id === id);
+  if (item) item.cantidad += 1;
+  else carrito_.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 });
+  renderCarrito();
+}
+
+function cambiarCantidad(id, delta) {
+  const item = carrito_.find(i => i.id === id);
+  if (!item) return;
+  item.cantidad += delta;
+  if (item.cantidad <= 0) carrito_ = carrito_.filter(i => i.id !== id);
+  renderCarrito();
+}
+
+function renderCarrito() {
+  const box = document.getElementById('tienda-carrito-box');
+  const cont = document.getElementById('tienda-carrito');
+  if (!box) return;
+  if (!carrito_.length) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = 'block';
+  let total = 0;
+  cont.innerHTML = carrito_.map(i => {
+    const subtotal = i.precio * i.cantidad;
+    total += subtotal;
+    return `
+      <div class="carrito-row">
+        <span>${i.nombre}</span>
+        <div class="c-qty">
+          <button onclick="cambiarCantidad('${i.id}', -1)">−</button>
+          <span>${i.cantidad}</span>
+          <button onclick="cambiarCantidad('${i.id}', 1)">+</button>
+          <b style="margin-left:8px;">${money(subtotal)}</b>
+        </div>
+      </div>
+    `;
+  }).join('');
+  document.getElementById('tn-total').value = money(total);
 }
 
 function renderCaja() {
@@ -1205,7 +1265,7 @@ function renderCaja() {
       <div class="report-card pos"><div class="label">Ingresos efectivo</div><div class="value">${money(ingEfectivo)}</div></div>
       <div class="report-card neg"><div class="label">Egresos efectivo</div><div class="value">${money(egEfectivo)}</div></div>
     </div>
-    <p class="hint">Efectivo en caja = fondo para vueltos + ingresos en efectivo − egresos en efectivo, desde tu último corte hasta ahora. No incluye las ventas de la tiendita, que se llevan en su propio registro.</p>
+    <p class="hint">Efectivo en caja = fondo para vueltos + ingresos en efectivo − egresos en efectivo, desde tu último corte hasta ahora.</p>
     <table>
       <thead><tr><th>Movimiento</th><th>Concepto</th><th>Método</th><th>Monto</th></tr></thead>
       <tbody>${filas}</tbody>
@@ -1231,208 +1291,6 @@ function renderCaja() {
       </table>
     `;
   }
-}
-
-// --- TIENDITA ---
-function stockClase(stock) {
-  if (stock <= 0) return 'agotado';
-  if (stock <= 5) return 'bajo';
-  return 'ok';
-}
-
-function poblarSelectProductos() {
-  const sel = document.getElementById('tv-producto');
-  if (!sel) return;
-  const seleccionActual = sel.value;
-  sel.innerHTML = '';
-  if (!productos_.length) {
-    sel.innerHTML = '<option value="">No hay productos cargados</option>';
-    return;
-  }
-  productos_.forEach(p => {
-    const opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = `${p.nombre} — ${money(p.precio)} (stock: ${p.stock})`;
-    sel.appendChild(opt);
-  });
-  if (seleccionActual && productos_.some(p => p.id === seleccionActual)) sel.value = seleccionActual;
-}
-
-function actualizarResumenVenta() {
-  const sel = document.getElementById('tv-producto');
-  const cantInput = document.getElementById('tv-cantidad');
-  const hint = document.getElementById('tv-stock-hint');
-  const totalInput = document.getElementById('tv-total');
-  if (!sel || !sel.value) { totalInput.value = ''; hint.textContent = ''; return; }
-  const prod = productos_.find(p => p.id === sel.value);
-  if (!prod) return;
-  const cant = parseInt(cantInput.value) || 0;
-  totalInput.value = money(prod.precio * cant);
-  if (cant > prod.stock) {
-    hint.textContent = `Solo quedan ${prod.stock} unidad(es) en stock.`;
-    hint.className = 'hint err';
-  } else {
-    hint.textContent = `Stock disponible: ${prod.stock}`;
-    hint.className = 'hint';
-  }
-}
-
-function renderTienda() {
-  poblarSelectProductos();
-  actualizarResumenVenta();
-  renderProductosTabla();
-  renderVentasTiendaTabla();
-  renderResumenTienda();
-}
-
-function renderProductosTabla() {
-  const el = document.getElementById('tienda-productos-tabla');
-  if (!el) return;
-  if (!productos_.length) {
-    el.innerHTML = '<p class="empty-hist">Todavía no has añadido productos.</p>';
-    return;
-  }
-  const rows = productos_.map(p => `
-    <tr>
-      <td>${p.nombre}</td>
-      <td>${money(p.precio)}</td>
-      <td>
-        <span class="stock-badge ${stockClase(p.stock)}">${p.stock} und.</span>
-      </td>
-      <td>
-        <input type="number" class="inline-num" id="repo-${p.id}" min="1" value="1" style="margin-right:6px;">
-        <button class="icon-btn pos" onclick="reponerStock('${p.id}')">+ Reponer</button>
-        &nbsp;·&nbsp;
-        <button class="icon-btn" onclick="eliminarProducto('${p.id}')">Eliminar</button>
-      </td>
-    </tr>
-  `).join('');
-  el.innerHTML = `
-    <table>
-      <thead><tr><th>Producto</th><th>Precio</th><th>Stock</th><th></th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
-}
-
-function renderVentasTiendaTabla() {
-  const el = document.getElementById('tienda-ventas-tabla');
-  if (!el) return;
-  if (!ventasTienda_.length) {
-    el.innerHTML = '<p class="empty-hist">Todavía no hay ventas registradas.</p>';
-    return;
-  }
-  const rows = [...ventasTienda_].reverse().slice(0, 100).map(v => `
-    <tr>
-      <td>${new Date(v.timestamp).toLocaleString('es-PE',{dateStyle:'short',timeStyle:'short'})}</td>
-      <td>${v.nombreProducto}</td>
-      <td>${v.cantidad}</td>
-      <td>${v.metodo}</td>
-      <td>${money(v.total)}</td>
-    </tr>
-  `).join('');
-  el.innerHTML = `
-    <table>
-      <thead><tr><th>Fecha</th><th>Producto</th><th>Cant.</th><th>Método</th><th>Total</th></tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-  `;
-}
-
-function renderResumenTienda() {
-  const el = document.getElementById('tienda-resumen');
-  if (!el) return;
-  const hoy = todayLocalStr();
-  const mesActual = hoy.slice(0,7);
-  const ventasHoy = ventasTienda_.filter(v => dateOnlyLocal(v.timestamp) === hoy);
-  const ventasMes = ventasTienda_.filter(v => dateOnlyLocal(v.timestamp).slice(0,7) === mesActual);
-  const totalHoy = ventasHoy.reduce((s,v) => s + Number(v.total), 0);
-  const totalMes = ventasMes.reduce((s,v) => s + Number(v.total), 0);
-  const efectivoMes = ventasMes.filter(v => v.metodo === 'Efectivo').reduce((s,v) => s + Number(v.total), 0);
-  const yapeMes = ventasMes.filter(v => v.metodo === 'Yape').reduce((s,v) => s + Number(v.total), 0);
-  el.innerHTML = `
-    <div class="report-card pos"><div class="label">Vendido hoy</div><div class="value">${money(totalHoy)}</div></div>
-    <div class="report-card pos"><div class="label">Vendido este mes</div><div class="value">${money(totalMes)}</div></div>
-    <div class="report-card"><div class="label">Efectivo del mes</div><div class="value">${money(efectivoMes)}</div></div>
-    <div class="report-card"><div class="label">Yape del mes</div><div class="value">${money(yapeMes)}</div></div>
-  `;
-}
-
-document.getElementById('tv-producto').addEventListener('change', actualizarResumenVenta);
-document.getElementById('tv-cantidad').addEventListener('input', actualizarResumenVenta);
-
-document.getElementById('tv-vender').addEventListener('click', async () => {
-  const sel = document.getElementById('tv-producto');
-  const prod = productos_.find(p => p.id === sel.value);
-  if (!prod) { alert('Selecciona un producto.'); return; }
-  const cant = parseInt(document.getElementById('tv-cantidad').value) || 0;
-  if (cant < 1) { alert('La cantidad debe ser al menos 1.'); return; }
-  if (cant > prod.stock) { alert(`No hay suficiente stock. Solo quedan ${prod.stock} unidad(es).`); return; }
-  const metodo = document.getElementById('tv-metodo').value;
-  const total = prod.precio * cant;
-
-  prod.stock -= cant;
-  ventasTienda_.push({
-    timestamp: new Date().toISOString(),
-    productoId: prod.id,
-    nombreProducto: prod.nombre,
-    cantidad: cant,
-    precioUnit: prod.precio,
-    total,
-    metodo
-  });
-
-  const btn = document.getElementById('tv-vender');
-  const original = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  await Promise.all([saveProductos(), saveVentasTienda()]);
-  btn.disabled = false; btn.textContent = original;
-
-  document.getElementById('tv-cantidad').value = 1;
-  renderTienda();
-});
-
-document.getElementById('tp-toggle-inv').addEventListener('click', () => {
-  document.getElementById('tp-toggle-inv').classList.toggle('open');
-  document.getElementById('tp-wrap-inv').classList.toggle('open');
-});
-
-document.getElementById('tp-agregar').addEventListener('click', async () => {
-  const nombre = document.getElementById('tp-nombre').value.trim();
-  const precio = parseFloat(document.getElementById('tp-precio').value);
-  const stock = parseInt(document.getElementById('tp-stock').value) || 0;
-  if (!nombre || !precio) { alert('Completa el nombre y el precio del producto.'); return; }
-  productos_.push({
-    id: 'p-' + Date.now() + '-' + Math.floor(Math.random()*1000),
-    nombre, precio, stock
-  });
-  const btn = document.getElementById('tp-agregar');
-  const original = btn.textContent;
-  btn.disabled = true; btn.textContent = 'Guardando...';
-  await saveProductos();
-  btn.disabled = false; btn.textContent = original;
-  document.getElementById('tp-nombre').value = '';
-  document.getElementById('tp-precio').value = '';
-  document.getElementById('tp-stock').value = 0;
-  renderTienda();
-});
-
-async function reponerStock(id) {
-  const prod = productos_.find(p => p.id === id);
-  if (!prod) return;
-  const input = document.getElementById('repo-' + id);
-  const cant = parseInt(input.value) || 0;
-  if (cant < 1) { alert('Ingresa una cantidad válida para reponer.'); return; }
-  prod.stock += cant;
-  await saveProductos();
-  renderTienda();
-}
-
-async function eliminarProducto(id) {
-  if (!confirm('¿Eliminar este producto del catálogo? El historial de ventas no se verá afectado.')) return;
-  productos_ = productos_.filter(p => p.id !== id);
-  await saveProductos();
-  renderTienda();
 }
 
 function openRoom(rm) {
@@ -1774,7 +1632,6 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'caja') renderCaja();
     if (btn.dataset.tab === 'reporte') renderReporte();
-    if (btn.dataset.tab === 'tienda') renderTienda();
   });
 });
 
@@ -1813,6 +1670,58 @@ document.getElementById('cj-hacer-corte').addEventListener('click', async () => 
 });
 
 document.getElementById('rp-mes').addEventListener('change', renderReporte);
+
+document.getElementById('tn-agregar-producto').addEventListener('click', async () => {
+  const nombre = document.getElementById('tn-prod-nombre').value.trim();
+  const precio = parseFloat(document.getElementById('tn-prod-precio').value);
+  if (!nombre || !precio) { alert('Completa el nombre y el precio del producto.'); return; }
+  productos_.push({ id: 'p' + Date.now(), nombre, precio });
+  const btn = document.getElementById('tn-agregar-producto');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  await saveProductos();
+  btn.disabled = false; btn.textContent = original;
+  document.getElementById('tn-prod-nombre').value = '';
+  document.getElementById('tn-prod-precio').value = '';
+  renderTienda();
+});
+
+async function eliminarProducto(id) {
+  if (!confirm('¿Eliminar este producto?')) return;
+  productos_ = productos_.filter(p => p.id !== id);
+  await saveProductos();
+  renderTienda();
+}
+
+document.getElementById('tn-vaciar-carrito').addEventListener('click', () => {
+  carrito_ = [];
+  renderCarrito();
+});
+
+document.getElementById('tn-registrar-venta').addEventListener('click', async () => {
+  if (!carrito_.length) return;
+  const total = carrito_.reduce((s,i) => s + i.precio * i.cantidad, 0);
+  const metodo = document.getElementById('tn-metodo').value;
+  const concepto = 'Tienda: ' + carrito_.map(i => `${i.nombre} x${i.cantidad}`).join(', ');
+  const ahora = new Date();
+  caja_.push({
+    id: 'venta-' + ahora.getTime(),
+    fecha: dateOnlyLocal(ahora),
+    hora: ahora.toTimeString().slice(0,5),
+    monto: total,
+    metodo,
+    concepto
+  });
+  const btn = document.getElementById('tn-registrar-venta');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  await saveCaja();
+  btn.disabled = false; btn.textContent = original;
+  carrito_ = [];
+  renderCarrito();
+  renderCaja();
+  alert(`Venta registrada: ${money(total)}`);
+});
 
 document.getElementById('gs-agregar').addEventListener('click', async () => {
   const fecha = document.getElementById('gs-fecha').value;
@@ -1875,26 +1784,11 @@ document.getElementById('btn-exportar').addEventListener('click', () => {
     Metodo: c.metodo,
     Monto: c.monto
   }));
-  const productosData = productos_.map(p => ({
-    Producto: p.nombre,
-    Precio: p.precio,
-    Stock: p.stock
-  }));
-  const ventasTiendaData = ventasTienda_.map(v => ({
-    Fecha: new Date(v.timestamp).toLocaleString('es-PE'),
-    Producto: v.nombreProducto,
-    Cantidad: v.cantidad,
-    PrecioUnitario: v.precioUnit,
-    Metodo: v.metodo,
-    Total: v.total
-  }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(huespedesData), 'Huespedes');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(gastosData), 'Gastos');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(reservasData), 'Reservas');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(cajaData), 'Caja');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(productosData), 'Tienda-Productos');
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ventasTiendaData), 'Tienda-Ventas');
   const fechaArchivo = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, `respaldo-hospedaje-${fechaArchivo}.xlsx`);
 });
