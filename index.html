@@ -715,14 +715,19 @@
 
 <!-- MODAL CARRITO -->
 <div class="overlay" id="overlay-carrito">
-  <div class="modal modal-wrap">
+  <div class="modal modal-wrap" style="max-width:480px;">
     <button class="modal-close" data-close>&times;</button>
-    <h2>Carrito</h2>
-    <p class="sub" id="carrito-modal-sub">Tu carrito está vacío</p>
+    <h2>Tienda</h2>
+    <p class="sub" id="carrito-modal-sub">Toca un producto para agregarlo</p>
 
-    <div id="carrito-modal-vacio" class="empty-hist" style="display:none;">Todavía no agregaste productos. Ciérra esta ventana y toca un producto en la Tienda.</div>
+    <div id="carrito-modal-productos-vacio" class="empty-hist" style="display:none;">Todavía no tienes productos cargados. Agrégalos desde la pestaña Tienda.</div>
+    <div class="tienda-grid" id="carrito-modal-productos" style="margin-bottom:16px;"></div>
+
+    <div id="carrito-modal-vacio" class="empty-hist" style="display:none;">Tu carrito está vacío. Toca un producto arriba para agregarlo.</div>
 
     <div id="carrito-modal-body" style="display:none;">
+      <div style="height:1px;background:var(--tag-border);margin:6px 0 14px;"></div>
+      <p class="sub" style="margin-bottom:8px;">Carrito</p>
       <div id="tienda-carrito"></div>
       <div class="row2" style="margin-top:10px;">
         <div class="field">
@@ -1261,6 +1266,28 @@ function calcularPeriodo(desde, hasta) {
   return { ingresosP, gastosP, ingEfectivo, ingYape, egEfectivo, egYape };
 }
 
+function productoTileHTML(p) {
+  const sinStock = p.stock != null && p.stock <= 0;
+  const stockTxt = p.stock != null ? `<div class="p-stock ${p.stock <= 3 ? 'bajo' : ''}">${sinStock ? 'Sin stock' : p.stock + ' en stock'}</div>` : '';
+  return `
+    <div class="prod-btn ${sinStock ? 'sin-stock' : ''}" onclick="${sinStock ? '' : `agregarAlCarrito('${p.id}')`}">
+      <div class="p-nombre">${p.nombre}</div>
+      <div class="p-precio">${money(p.precio)}</div>
+      ${stockTxt}
+    </div>
+  `;
+}
+
+function renderProductGrids() {
+  const html = productos_.map(productoTileHTML).join('');
+  ['tienda-grid', 'carrito-modal-productos'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+  const vacioModal = document.getElementById('carrito-modal-productos-vacio');
+  if (vacioModal) vacioModal.style.display = productos_.length ? 'none' : 'block';
+}
+
 function renderTienda() {
   const grid = document.getElementById('tienda-grid');
   const vacio = document.getElementById('tienda-vacio');
@@ -1284,23 +1311,8 @@ function renderTienda() {
   }
   document.getElementById('tn-fondo').value = fondoTienda || '';
 
-  if (!productos_.length) {
-    grid.innerHTML = '';
-    vacio.style.display = 'block';
-  } else {
-    vacio.style.display = 'none';
-    grid.innerHTML = productos_.map(p => {
-      const sinStock = p.stock != null && p.stock <= 0;
-      const stockTxt = p.stock != null ? `<div class="p-stock ${p.stock <= 3 ? 'bajo' : ''}">${sinStock ? 'Sin stock' : p.stock + ' en stock'}</div>` : '';
-      return `
-        <div class="prod-btn ${sinStock ? 'sin-stock' : ''}" onclick="${sinStock ? '' : `agregarAlCarrito('${p.id}')`}">
-          <div class="p-nombre">${p.nombre}</div>
-          <div class="p-precio">${money(p.precio)}</div>
-          ${stockTxt}
-        </div>
-      `;
-    }).join('');
-  }
+  vacio.style.display = productos_.length ? 'none' : 'block';
+  renderProductGrids();
 
   renderCarrito();
 
@@ -1373,7 +1385,7 @@ function renderCarrito() {
   if (!carrito_.length) {
     vacio.style.display = 'block';
     body.style.display = 'none';
-    sub.textContent = 'Tu carrito está vacío';
+    sub.textContent = 'Toca un producto para agregarlo';
     return;
   }
   vacio.style.display = 'none';
@@ -1922,6 +1934,7 @@ document.getElementById('cart-icon-btn').addEventListener('click', () => {
 });
 
 function abrirCarritoModal() {
+  renderProductGrids();
   renderCarrito();
   document.getElementById('overlay-carrito').classList.add('show');
 }
